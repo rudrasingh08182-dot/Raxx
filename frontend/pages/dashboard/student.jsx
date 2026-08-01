@@ -356,7 +356,7 @@ export default function StudentDashboardMobile() {
           <div className="flex gap-2 mb-3">
             <input
               type="text"
-              placeholder="Task likho..."
+              placeholder="Add Your Task......."
               value={newTaskText}
               onChange={e => setNewTaskText(e.target.value)}
               onKeyDown={e => e.key === "Enter" && addTask()}
@@ -372,7 +372,7 @@ export default function StudentDashboardMobile() {
           ) : todayTasks.length === 0 ? (
             <div className="text-center py-4">
               <p className="text-2xl mb-1">📝</p>
-              <p className="text-xs" style={{ color: c.textDim }}>Koi task nahi hai</p>
+              <p className="text-xs" style={{ color: c.textDim }}>No Task!</p>
             </div>
           ) : (
             todayTasks.map((item) => (
@@ -441,7 +441,7 @@ export default function StudentDashboardMobile() {
         {/* Homework */}
         <div className="rounded-2xl p-4" style={{ background: c.surfaceElevated, border: `1px solid ${c.border}` }}>
           <h3 className="font-bold text-sm mb-3" style={{ color: c.text }}>📚 Homework</h3>
-          <p className="text-xs mb-3" style={{ color: c.textMuted }}>Teacher ka 6-digit room code daalo</p>
+          <p className="text-xs mb-3" style={{ color: c.textMuted }}>Enter 6-digit Teacher room code</p>
           <div className="flex gap-2">
             <input type="text" placeholder="000000" maxLength={6} value={roomCode} onChange={e => setRoomCode(e.target.value)} className="flex-1 px-4 py-3 rounded-xl text-center text-lg tracking-widest font-mono focus:outline-none" style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.text }} />
             <button onClick={() => { if (roomCode.length === 6) router.push(`/homework?code=${roomCode}`); else alert('6-digit code daalo!'); }} className="px-5 py-3 rounded-xl font-semibold" style={{ background: c.rust, color: c.cream }}>Join</button>
@@ -456,7 +456,7 @@ export default function StudentDashboardMobile() {
           </div>
           <div className="rounded-xl p-3 text-center" style={{ background: c.bg, border: `1px solid ${c.border}` }}>
             <span className="text-2xl mb-2 block">📱</span>
-            <p className="text-xs" style={{ color: c.textMuted }}>Monthly report automatically WhatsApp pe</p>
+            <p className="text-xs" style={{ color: c.textMuted }}>Monthly reports are automatically sent via WhatsApp</p>
           </div>
         </div>
 
