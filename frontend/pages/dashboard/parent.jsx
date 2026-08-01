@@ -36,7 +36,7 @@ const [showUpdates, setShowUpdates] = useState(false);
     setError("");
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/api/parent/connect/${studentCode.toUpperCase()}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/parent/connect/${studentCode.toUpperCase()}`
       );
       const data = await res.json();
       if (res.ok && data.success) {

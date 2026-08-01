@@ -29,7 +29,7 @@ const [expandedReplies, setExpandedReplies] = useState({});
   const fetchHomeworks = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/homework/teacher/${teacher.id}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/homework/teacher/${teacher.id}`);
       const data = await res.json();
       // backend "status" return karta hai "success" nahi
       if (data.status === 'success') setHomeworks(data.homeworks || []);
@@ -332,7 +332,7 @@ function UpdatesModal({ batch, teacher, onClose }) {
   const fetchAnnouncements = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/announcements/batch/${batch.id}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/announcements/batch/${batch.id}`);
       const data = await res.json();
       if (data.success) setAnnouncements(data.announcements || []);
     } catch (err) { console.error(err); }
@@ -351,7 +351,7 @@ function UpdatesModal({ batch, teacher, onClose }) {
     setExpandedReplies(prev => ({ ...prev, [announcementId]: true }));
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/announcements/replies/${announcementId}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/announcements/replies/${announcementId}`);
       const data = await res.json();
       if (data.success) {
         setReplies(prev => ({ ...prev, [announcementId]: data.replies || [] }));
@@ -415,7 +415,7 @@ function UpdatesModal({ batch, teacher, onClose }) {
 
   const deleteAnnouncement = async (id) => {
     try {
-      await fetch(`http://127.0.0.1:8000/announcements/${id}`, { method: 'DELETE' });
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/announcements/${id}`, { method: 'DELETE' });
       fetchAnnouncements();
     } catch (err) { console.error(err); }
   };
@@ -633,7 +633,7 @@ export default function TeacherDashboard() {
   const fetchMyStudents = async (teacherId) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/batch/my-students/${teacherId}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/batch/my-students/${teacherId}`);
       const data = await res.json();
       setBatches(data.batches || []);
       setTotalStudents(data.total_students || 0);

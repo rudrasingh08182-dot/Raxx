@@ -27,7 +27,7 @@ export default function JoinBatch() {
     setLoadingBatches(true);
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/api/batch/my-batches/${studentId}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/batch/my-batches/${studentId}`
       );
       const data = await res.json();
       setMyBatches(data.batches || []);
@@ -305,7 +305,7 @@ function StudentUpdatesModal({ batch, student, onClose }) {
     setLoading(true);
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/announcements/batch/${batch.id}`
+        `${process.env.NEXT_PUBLIC_API_URL}/announcements/batch/${batch.id}`
       );
       const data = await res.json();
       if (data.success) {
@@ -322,7 +322,7 @@ function StudentUpdatesModal({ batch, student, onClose }) {
   const fetchReplies = async (announcementId) => {
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/announcements/replies/${announcementId}`
+        `${process.env.NEXT_PUBLIC_API_URL}/announcements/replies/${announcementId}`
       );
       const data = await res.json();
       if (data.success) {

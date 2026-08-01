@@ -32,22 +32,22 @@ export default function Progress() {
       // Fetch all data in parallel
       const [doubts, notes, tests, games, rewards, homework] =
         await Promise.all([
-          fetch(`http://127.0.0.1:8000/doubt/history/${userId}`)
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/doubt/history/${userId}`)
             .then((r) => r.json())
             .catch(() => ({ data: [] })),
-          fetch(`http://127.0.0.1:8000/notes/history/${userId}`)
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/notes/history/${userId}`)
             .then((r) => r.json())
             .catch(() => ({ data: [] })),
-          fetch(`http://127.0.0.1:8000/mocktest/history/${userId}`)
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/mocktest/history/${userId}`)
             .then((r) => r.json())
             .catch(() => ({ data: [] })),
-          fetch(`http://127.0.0.1:8000/games/history/${userId}`)
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/games/history/${userId}`)
             .then((r) => r.json())
             .catch(() => ({ data: [] })),
-          fetch(`http://127.0.0.1:8000/games/rewards/${userId}`)
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/games/rewards/${userId}`)
             .then((r) => r.json())
             .catch(() => ({})),
-          fetch(`http://127.0.0.1:8000/homework/history/${userId}`)
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/homework/history/${userId}`)
             .then((r) => r.json())
             .catch(() => ({ data: [] })),
         ]);
