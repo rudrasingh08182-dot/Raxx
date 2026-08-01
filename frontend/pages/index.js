@@ -19,7 +19,7 @@ const SplineScene = dynamic(
 );
 
 /* ── SPARKLES CANVAS ── */
-function SparklesCanvas({ color = "#34d399", count = 40, className = "" }) {
+function SparklesCanvas({ color = "#2fae82", count = 40, className = "" }) {
   const canvasRef = useRef(null);
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -49,7 +49,7 @@ function SparklesCanvas({ color = "#34d399", count = 40, className = "" }) {
         if (p.up) { p.o += p.ds; if (p.o >= 1) p.up = false; }
         else { p.o -= p.ds; if (p.o <= 0.05) p.up = true; }
         ctx.fillStyle = color;
-        ctx.globalAlpha = Math.max(0, Math.min(1, p.o));
+        ctx.globalAlpha = Math.max(0, Math.min(1, p.o)) * 0.8;
         ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
       });
       raf = requestAnimationFrame(draw);
@@ -117,93 +117,100 @@ export default function Home() {
   ];
 
   return (
-    <div className="bg-[#060b07] min-h-screen font-sans text-[#e2f1e6] selection:bg-[#b8523b]/30">
-      {/* ── MOBILE APP SHELL ── */}
-      <div className="max-w-md mx-auto relative">
+    <div className="bg-[#07100a] min-h-screen font-sans text-[#dfeee4] selection:bg-[#a84a36]/30">
+      {/* ── APP SHELL — mobile-first, widens gracefully on tablet/desktop ── */}
+      <div className="max-w-md sm:max-w-2xl md:max-w-4xl lg:max-w-6xl mx-auto relative">
         <Navbar />
 
         {/* ═══ HERO ═══ */}
-        <section className="relative overflow-hidden border-b border-[#14281b]">
+        <section className="relative overflow-hidden border-b border-[#132419]">
           {/* BG layers */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0e1d13] via-[#060b07] to-[#060b07] pointer-events-none" />
-          <div className="absolute inset-0 pointer-events-none z-0 opacity-50">
-            <SparklesCanvas color="#34d399" count={50} className="w-full h-full" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0d1911] via-[#07100a] to-[#07100a] pointer-events-none" />
+          <div className="absolute inset-0 pointer-events-none z-0 opacity-40">
+            <SparklesCanvas color="#2fae82" count={50} className="w-full h-full" />
           </div>
-          <div className="absolute inset-0 bg-[#060b07] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_30%,transparent_20%,black)] pointer-events-none z-[1]" />
+          <div className="absolute inset-0 bg-[#07100a] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_30%,transparent_20%,black)] pointer-events-none z-[1]" />
 
-          <div className="relative z-10 px-5 pt-16 pb-5">
-            {/* 3D Robot */}
-            <FadeIn>
-              <div className="w-full h-[240px] mb-4">
-                <Card className="w-full h-full bg-black/[0.25] border-[#162a1c] relative overflow-hidden rounded-2xl">
-                  <Spotlight className="-top-16 left-8" fill="#34d399" size={160} />
-                  <SplineScene
-                    scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
-                    className="w-full h-full"
-                  />
-                </Card>
+          <div className="relative z-10 px-5 md:px-10 pt-16 pb-5 md:pt-20 md:pb-10">
+            <div className="md:grid md:grid-cols-2 md:gap-10 md:items-center">
+              {/* Text column */}
+              <div className="md:order-2">
+                {/* 3D Robot */}
+                <FadeIn>
+                  <div className="w-full h-[240px] md:h-[420px] mb-4 md:mb-0">
+                    <Card className="w-full h-full bg-black/[0.25] border-[#142519] relative overflow-hidden rounded-2xl">
+                      <Spotlight className="-top-16 left-8" fill="#2fae82" size={160} />
+                      <SplineScene
+                        scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
+                        className="w-full h-full"
+                      />
+                    </Card>
+                  </div>
+                </FadeIn>
               </div>
-            </FadeIn>
 
-            {/* Live pill */}
-            <FadeIn delay={0.05}>
-              <div className="flex justify-center mb-4">
-                <div className="inline-flex items-center gap-2 bg-[#0b160d]/80 backdrop-blur-md border border-[#1a3321] rounded-full px-3 py-1.5">
-                  <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
-                  <span className="text-[#a4c7af] text-[11px] font-semibold tracking-wide">
-                    {studentCount.toLocaleString("en-IN")}+ students right now
-                  </span>
-                </div>
+              <div className="md:order-1">
+                {/* Live pill */}
+                <FadeIn delay={0.05}>
+                  <div className="flex justify-center md:justify-start mb-4">
+                    <div className="inline-flex items-center gap-2 bg-[#0a1410]/80 backdrop-blur-md border border-[#182c1e] rounded-full px-3 py-1.5">
+                      <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(47,174,130,0.6)]" />
+                      <span className="text-[#9bbca5] text-[11px] font-semibold tracking-wide">
+                        {studentCount.toLocaleString("en-IN")}+ students right now
+                      </span>
+                    </div>
+                  </div>
+                </FadeIn>
+
+                {/* Title */}
+                <FadeIn delay={0.1}>
+                  <h1 className="text-[28px] md:text-[44px] lg:text-[52px] font-black text-white leading-[1.15] tracking-tight text-center md:text-left">
+                    One AI Platform.{" "}
+                    <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-200 bg-clip-text text-transparent">
+                      Every Exam
+                    </span>{" "}
+                    in India.
+                  </h1>
+                </FadeIn>
+
+                {/* Subtitle */}
+                <FadeIn delay={0.15}>
+                  <p className="text-[#84a48d] text-[13px] md:text-[15px] text-center md:text-left mt-3 leading-relaxed px-2 md:px-0 md:max-w-md">
+                    RAXX AI explains in Hindi or English, tracks your progress, and keeps parents in the loop. ₹129/month.
+                  </p>
+                </FadeIn>
+
+                {/* CTA */}
+                <FadeIn delay={0.2}>
+                  <div className="mt-5 space-y-2.5 md:flex md:space-y-0 md:gap-3 md:max-w-md">
+                    <button
+                      onClick={() => router.push("/register")}
+                      className="w-full bg-[#a84a36] hover:bg-[#b7523d] text-white py-3.5 rounded-2xl font-bold text-[13px] transition-all shadow-md shadow-[#3d1810]/50 active:scale-[0.97] uppercase tracking-wider"
+                    >
+                      Start Free — No Card Needed
+                    </button>
+                    <button
+                      onClick={() => router.push("/login")}
+                      className="w-full bg-[#0a1410] hover:bg-[#101d15] border border-[#182c1e] text-[#94b39d] py-3.5 rounded-2xl font-bold text-[13px] transition-all active:scale-[0.97]"
+                    >
+                      I Have an Account
+                    </button>
+                  </div>
+                </FadeIn>
               </div>
-            </FadeIn>
-
-            {/* Title */}
-            <FadeIn delay={0.1}>
-              <h1 className="text-[28px] font-black text-white leading-[1.15] tracking-tight text-center">
-                One AI Platform.{" "}
-                <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-200 bg-clip-text text-transparent">
-                  Every Exam
-                </span>{" "}
-                in India.
-              </h1>
-            </FadeIn>
-
-            {/* Subtitle */}
-            <FadeIn delay={0.15}>
-              <p className="text-[#8cb899] text-[13px] text-center mt-3 leading-relaxed px-2">
-                RAXX AI explains in Hindi or English, tracks your progress, and keeps parents in the loop. ₹129/month.
-              </p>
-            </FadeIn>
-
-            {/* CTA */}
-            <FadeIn delay={0.2}>
-              <div className="mt-5 space-y-2.5">
-                <button
-                  onClick={() => router.push("/register")}
-                  className="w-full bg-[#b8523b] hover:bg-[#c95a41] text-white py-3.5 rounded-2xl font-bold text-[13px] transition-all shadow-lg shadow-[#4a1c12]/60 active:scale-[0.97] uppercase tracking-wider"
-                >
-                  Start Free — No Card Needed
-                </button>
-                <button
-                  onClick={() => router.push("/login")}
-                  className="w-full bg-[#0b160d] hover:bg-[#122217] border border-[#1a3321] text-[#9fc2a9] py-3.5 rounded-2xl font-bold text-[13px] transition-all active:scale-[0.97]"
-                >
-                  I Have an Account
-                </button>
-              </div>
-            </FadeIn>
+            </div>
           </div>
 
           {/* Exam ticker */}
-          <div className="relative z-10 border-t border-[#14281b] py-4 px-4">
-            <p className="text-[#557861] text-[9px] font-bold uppercase tracking-[0.2em] mb-2.5 text-center">
+          <div className="relative z-10 border-t border-[#132419] py-4 px-4">
+            <p className="text-[#4e6d57] text-[9px] font-bold uppercase tracking-[0.2em] mb-2.5 text-center">
               Built for every exam, every board
             </p>
             <div className="relative flex overflow-hidden">
               <div className="flex gap-5 animate-marquee whitespace-nowrap">
                 {[...exams, ...exams].map((e, i) => (
-                  <span key={i} className="text-[#6c8f77] text-[12px] font-semibold tracking-wide flex items-center gap-1.5">
-                    {e}<span className="text-[#b8523b] text-[8px]">●</span>
+                  <span key={i} className="text-[#64856e] text-[12px] font-semibold tracking-wide flex items-center gap-1.5">
+                    {e}<span className="text-[#a84a36] text-[8px]">●</span>
                   </span>
                 ))}
               </div>
@@ -217,25 +224,25 @@ export default function Home() {
         </section>
 
         {/* ═══ FEATURES ═══ */}
-        <section id="features" className="px-4 py-10">
+        <section id="features" className="px-4 md:px-10 py-10 md:py-16">
           <FadeIn>
-            <div className="text-center mb-6">
-              <span className="text-[#f0ad73] text-[9px] font-bold uppercase tracking-[0.2em]">What You Get</span>
-              <h2 className="text-[20px] font-extrabold text-white mt-1.5">
+            <div className="text-center mb-6 md:mb-10">
+              <span className="text-[#e2a066] text-[9px] font-bold uppercase tracking-[0.2em]">What You Get</span>
+              <h2 className="text-[20px] md:text-[30px] font-extrabold text-white mt-1.5">
                 Everything a serious student needs.
               </h2>
             </div>
           </FadeIn>
 
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 md:gap-4">
             {features.map((f, i) => (
               <FadeIn key={i} delay={i * 0.04}>
-                <div className="bg-[#0c160e] border border-[#162a1c] active:border-emerald-500/30 rounded-2xl p-3.5 transition-all shadow group space-y-2 h-full">
-                  <div className="w-9 h-9 rounded-xl bg-[#060c07] border border-[#182e1f] flex items-center justify-center text-lg">
+                <div className="bg-[#0d1610] border border-[#142519] active:border-emerald-500/30 md:hover:border-emerald-500/30 rounded-2xl p-3.5 md:p-5 transition-all shadow group space-y-2 h-full">
+                  <div className="w-9 h-9 rounded-xl bg-[#070c08] border border-[#172a1d] flex items-center justify-center text-lg">
                     {f.icon}
                   </div>
-                  <h3 className="text-white font-bold text-[12px] leading-tight">{f.title}</h3>
-                  <p className="text-[#7fa38c] text-[10px] leading-relaxed">{f.desc}</p>
+                  <h3 className="text-white font-bold text-[12px] md:text-[13px] leading-tight">{f.title}</h3>
+                  <p className="text-[#799b84] text-[10px] md:text-[11px] leading-relaxed">{f.desc}</p>
                 </div>
               </FadeIn>
             ))}
@@ -243,27 +250,27 @@ export default function Home() {
         </section>
 
         {/* ═══ PRICING ═══ */}
-        <section id="pricing" className="px-4 py-10 border-t border-[#14281b]">
+        <section id="pricing" className="px-4 md:px-10 py-10 md:py-16 border-t border-[#132419]">
           <FadeIn>
-            <div className="text-center mb-6">
-              <span className="text-[#f0ad73] text-[9px] font-bold uppercase tracking-[0.2em]">Simple Pricing</span>
-              <h2 className="text-[20px] font-extrabold text-white mt-1.5">
+            <div className="text-center mb-6 md:mb-10">
+              <span className="text-[#e2a066] text-[9px] font-bold uppercase tracking-[0.2em]">Simple Pricing</span>
+              <h2 className="text-[20px] md:text-[30px] font-extrabold text-white mt-1.5">
                 Less than one tuition class.
               </h2>
             </div>
           </FadeIn>
 
-          {/* Plan tabs */}
-          <FadeIn delay={0.05}>
-            <div className="flex bg-[#0b160d] rounded-xl p-1 border border-[#162a1c] mb-4">
+          {/* Plan tabs — mobile/tablet only */}
+          <FadeIn delay={0.05} className="md:hidden">
+            <div className="flex bg-[#0a1410] rounded-xl p-1 border border-[#142519] mb-4">
               {plans.map((plan, i) => (
                 <button
                   key={i}
                   onClick={() => setActivePlan(i)}
                   className={`flex-1 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${
                     activePlan === i
-                      ? "bg-[#b8523b] text-white shadow-md"
-                      : "text-[#6e9178]"
+                      ? "bg-[#a84a36] text-white shadow-sm"
+                      : "text-[#67886f]"
                   }`}
                 >
                   {plan.name}
@@ -272,80 +279,47 @@ export default function Home() {
             </div>
           </FadeIn>
 
-          {/* Active plan card */}
-          <FadeIn delay={0.1}>
-            <div className={`rounded-2xl p-5 border transition-all ${
-              plans[activePlan].highlight
-                ? "bg-[#0f2115] border-emerald-500 shadow-xl shadow-emerald-950/40"
-                : "bg-[#0c160e] border-[#162a1c]"
-            }`}>
-              {plans[activePlan].highlight && (
-                <div className="inline-block bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-3">
-                  Most Popular
-                </div>
-              )}
-
-              <div className="flex items-baseline gap-1.5 mb-1">
-                <span className="text-3xl font-black font-mono text-white">{plans[activePlan].price}</span>
-                <span className="text-[#6e9178] text-[11px]">{plans[activePlan].period}</span>
-              </div>
-              <p className="text-[#6e9178] text-[11px] mb-4">{plans[activePlan].desc}</p>
-
-              <ul className="space-y-2.5 mb-5">
-                {plans[activePlan].features.map((feat, j) => (
-                  <li key={j} className="flex items-start gap-2 text-[12px] text-[#a4c7af]">
-                    <span className="text-emerald-400 font-bold shrink-0 mt-px">✓</span>
-                    <span>{feat}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                onClick={() => {
-                  if (plans[activePlan].name === "Institutes") {
-                    window.open("https://wa.me/918739042876?text=Hi%20RAXX%20AI%2C%20I%20am%20interested%20in%20Institute%20plan", "_blank");
-                  } else {
-                    router.push("/register");
-                  }
-                }}
-                className={`w-full py-3.5 rounded-xl font-bold text-[12px] uppercase tracking-wider transition active:scale-[0.97] ${
-                  plans[activePlan].highlight
-                    ? "bg-[#b8523b] hover:bg-[#c95a41] text-white shadow-lg shadow-[#4a1c12]/50"
-                    : "bg-[#060c07] hover:bg-[#102015] text-emerald-300 border border-[#1a3321]"
-                }`}
-              >
-                {plans[activePlan].cta}
-              </button>
-            </div>
+          {/* Active plan card — mobile/tablet */}
+          <FadeIn delay={0.1} className="md:hidden">
+            <PlanCard plan={plans[activePlan]} router={router} />
           </FadeIn>
+
+          {/* All plans side-by-side — desktop */}
+          <div className="hidden md:grid md:grid-cols-3 md:gap-5">
+            {plans.map((plan, i) => (
+              <FadeIn key={i} delay={i * 0.06}>
+                <PlanCard plan={plan} router={router} />
+              </FadeIn>
+            ))}
+          </div>
         </section>
 
         {/* ═══ TESTIMONIALS ═══ */}
-        <section className="px-4 py-10 border-t border-[#14281b]">
+        <section className="px-4 md:px-10 py-10 md:py-16 border-t border-[#132419]">
           <FadeIn>
-            <div className="text-center mb-6">
-              <span className="text-[#f0ad73] text-[9px] font-bold uppercase tracking-[0.2em]">Real Stories</span>
-              <h2 className="text-[20px] font-extrabold text-white mt-1.5">
+            <div className="text-center mb-6 md:mb-10">
+              <span className="text-[#e2a066] text-[9px] font-bold uppercase tracking-[0.2em]">Real Stories</span>
+              <h2 className="text-[20px] md:text-[30px] font-extrabold text-white mt-1.5">
                 Students across India.
               </h2>
             </div>
           </FadeIn>
 
-          {/* Horizontal swipe cards */}
-          <div className="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory scrollbar-hide -mx-4 px-4">
+          {/* Horizontal swipe on mobile, grid on desktop */}
+          <div className="flex md:grid md:grid-cols-3 md:gap-4 gap-3 overflow-x-auto md:overflow-visible pb-3 snap-x snap-mandatory scrollbar-hide -mx-4 md:mx-0 px-4 md:px-0">
             {testimonials.map((t, i) => (
               <FadeIn key={i} delay={i * 0.08}>
-                <div className="bg-[#0c160e] border border-[#162a1c] rounded-2xl p-4 space-y-3 shadow-md min-w-[260px] max-w-[280px] snap-center flex-shrink-0">
-                  <p className="text-[#a4c7af] text-[11px] leading-relaxed italic">
+                <div className="bg-[#0d1610] border border-[#142519] rounded-2xl p-4 md:p-5 space-y-3 shadow-sm min-w-[260px] md:min-w-0 max-w-[280px] md:max-w-none snap-center flex-shrink-0 h-full">
+                  <p className="text-[#9bbca5] text-[11px] md:text-[12px] leading-relaxed italic">
                     &ldquo;{t.quote}&rdquo;
                   </p>
-                  <div className="flex items-center gap-2.5 pt-2.5 border-t border-[#152a1c]">
-                    <div className="w-8 h-8 rounded-xl bg-[#b8523b] text-white font-bold flex items-center justify-center text-[11px] shadow">
+                  <div className="flex items-center gap-2.5 pt-2.5 border-t border-[#132419]">
+                    <div className="w-8 h-8 rounded-xl bg-[#a84a36] text-white font-bold flex items-center justify-center text-[11px] shadow-sm">
                       {t.name.charAt(0)}
                     </div>
                     <div>
                       <p className="text-white text-[11px] font-bold">{t.name}</p>
-                      <p className="text-[#597a62] text-[10px]">{t.role}</p>
+                      <p className="text-[#547061] text-[10px]">{t.role}</p>
                     </div>
                   </div>
                 </div>
@@ -355,21 +329,21 @@ export default function Home() {
         </section>
 
         {/* ═══ FINAL CTA ═══ */}
-        <section className="relative overflow-hidden px-5 py-12 text-center border-t border-[#14281b]">
-          <div className="absolute inset-0 pointer-events-none z-0 opacity-40">
-            <SparklesCanvas color="#34d399" count={30} className="w-full h-full" />
+        <section className="relative overflow-hidden px-5 md:px-10 py-12 md:py-20 text-center border-t border-[#132419]">
+          <div className="absolute inset-0 pointer-events-none z-0 opacity-30">
+            <SparklesCanvas color="#2fae82" count={30} className="w-full h-full" />
           </div>
           <FadeIn>
-            <div className="relative z-10 space-y-3">
-              <h2 className="text-[22px] font-black text-white leading-tight">
+            <div className="relative z-10 space-y-3 md:max-w-lg md:mx-auto">
+              <h2 className="text-[22px] md:text-[34px] font-black text-white leading-tight">
                 Your next mock test score starts today.
               </h2>
-              <p className="text-[#8cb899] text-[12px]">
+              <p className="text-[#84a48d] text-[12px] md:text-[14px]">
                 Join free in under a minute. No credit card needed.
               </p>
               <button
                 onClick={() => router.push("/register")}
-                className="w-full bg-[#b8523b] hover:bg-[#c95a41] text-white py-3.5 rounded-2xl font-bold text-[13px] uppercase tracking-wider transition active:scale-[0.97] shadow-xl shadow-[#4a1c12]/60 flex items-center justify-center gap-2 mt-2"
+                className="w-full md:w-auto md:px-10 bg-[#a84a36] hover:bg-[#b7523d] text-white py-3.5 rounded-2xl font-bold text-[13px] uppercase tracking-wider transition active:scale-[0.97] shadow-md shadow-[#3d1810]/50 flex items-center justify-center gap-2 mt-2 mx-auto"
               >
                 <span>Create Free Account</span>
                 <span>→</span>
@@ -379,55 +353,110 @@ export default function Home() {
         </section>
 
         {/* ═══ FOOTER ═══ */}
-        <footer id="about" className="border-t border-[#14281b] bg-[#070e09] px-5 py-8">
-          {/* Brand */}
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-xl bg-[#b8523b] text-white flex items-center justify-center font-black text-sm">R</div>
-            <span className="text-white font-extrabold text-base tracking-wider">RAXX AI</span>
-          </div>
-          <p className="text-[#597a62] text-[11px] leading-relaxed mb-6">
-            India's universal AI study platform — every board, every exam, every language.
-          </p>
-
-          {/* Links grid */}
-          <div className="grid grid-cols-2 gap-5 mb-6">
+        <footer id="about" className="border-t border-[#132419] bg-[#080f0a] px-5 md:px-10 py-8 md:py-12">
+          <div className="md:grid md:grid-cols-3 md:gap-10">
+            {/* Brand */}
             <div>
-              <h4 className="text-white font-bold text-[10px] uppercase tracking-wider mb-2">Product</h4>
-              <ul className="space-y-1.5 text-[11px] text-[#8cb899]">
-                <li><a href="#features" className="active:text-white transition">Features</a></li>
-                <li><a href="#pricing" className="active:text-white transition">Pricing</a></li>
-                <li><a href="/login" className="active:text-white transition">Login</a></li>
-              </ul>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-[#a84a36] text-white flex items-center justify-center font-black text-sm">R</div>
+                <span className="text-white font-extrabold text-base tracking-wider">RAXX AI</span>
+              </div>
+              <p className="text-[#547061] text-[11px] leading-relaxed mb-6 md:mb-0">
+                India's universal AI study platform — every board, every exam, every language.
+              </p>
             </div>
-            <div>
-              <h4 className="text-white font-bold text-[10px] uppercase tracking-wider mb-2">Contact</h4>
-              <ul className="space-y-1.5 text-[11px] text-[#8cb899]">
-                <li>
-                  <a href="tel:8739042876" className="active:text-white transition flex items-center gap-1">
-                    📞 +91 8739042876
-                  </a>
-                </li>
-                <li>
-                  <a href="mailto:help@raxxai.com" className="active:text-white transition flex items-center gap-1">
-                    📧 help@raxxai.com
-                  </a>
-                </li>
-                <li>
-                  <a href="https://wa.me/918739042876" target="_blank" rel="noreferrer" className="text-emerald-400 active:text-emerald-300 transition flex items-center gap-1 font-semibold">
-                    💬 WhatsApp
-                  </a>
-                </li>
-              </ul>
+
+            {/* Links grid */}
+            <div className="grid grid-cols-2 gap-5 mb-6 md:col-span-2 md:mb-0">
+              <div>
+                <h4 className="text-white font-bold text-[10px] uppercase tracking-wider mb-2">Product</h4>
+                <ul className="space-y-1.5 text-[11px] text-[#84a48d]">
+                  <li><a href="#features" className="active:text-white md:hover:text-white transition">Features</a></li>
+                  <li><a href="#pricing" className="active:text-white md:hover:text-white transition">Pricing</a></li>
+                  <li><a href="/login" className="active:text-white md:hover:text-white transition">Login</a></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-white font-bold text-[10px] uppercase tracking-wider mb-2">Contact</h4>
+                <ul className="space-y-1.5 text-[11px] text-[#84a48d]">
+                  <li>
+                    <a href="tel:8739042876" className="active:text-white md:hover:text-white transition flex items-center gap-1">
+                      📞 +91 8739042876
+                    </a>
+                  </li>
+                  <li>
+                    <a href="mailto:help@raxxai.com" className="active:text-white md:hover:text-white transition flex items-center gap-1">
+                      📧 help@raxxai.com
+                    </a>
+                  </li>
+                  <li>
+                    <a href="https://wa.me/918739042876" target="_blank" rel="noreferrer" className="text-emerald-400 active:text-emerald-300 md:hover:text-emerald-300 transition flex items-center gap-1 font-semibold">
+                      💬 WhatsApp
+                    </a>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
 
-          <div className="border-t border-[#152a1c] pt-4 text-center">
-            <p className="text-[#597a62] text-[10px]">
+          <div className="border-t border-[#132419] pt-4 mt-2 md:mt-8 text-center">
+            <p className="text-[#547061] text-[10px]">
               © 2026 RAXX AI Technologies
             </p>
           </div>
         </footer>
       </div>
+    </div>
+  );
+}
+
+/* ── PLAN CARD (shared between mobile tabs view and desktop grid) ── */
+function PlanCard({ plan, router }) {
+  return (
+    <div className={`rounded-2xl p-5 border transition-all h-full flex flex-col ${
+      plan.highlight
+        ? "bg-[#0f1e15] border-emerald-600/70 shadow-lg shadow-emerald-950/30"
+        : "bg-[#0d1610] border-[#142519]"
+    }`}>
+      {plan.highlight && (
+        <div className="inline-block w-fit bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-3">
+          Most Popular
+        </div>
+      )}
+
+      <h3 className="text-white font-bold text-[13px] mb-1 hidden md:block">{plan.name}</h3>
+
+      <div className="flex items-baseline gap-1.5 mb-1">
+        <span className="text-3xl font-black font-mono text-white">{plan.price}</span>
+        <span className="text-[#67886f] text-[11px]">{plan.period}</span>
+      </div>
+      <p className="text-[#67886f] text-[11px] mb-4">{plan.desc}</p>
+
+      <ul className="space-y-2.5 mb-5 flex-1">
+        {plan.features.map((feat, j) => (
+          <li key={j} className="flex items-start gap-2 text-[12px] text-[#9bbca5]">
+            <span className="text-emerald-500 font-bold shrink-0 mt-px">✓</span>
+            <span>{feat}</span>
+          </li>
+        ))}
+      </ul>
+
+      <button
+        onClick={() => {
+          if (plan.name === "Institutes") {
+            window.open("https://wa.me/918739042876?text=Hi%20RAXX%20AI%2C%20I%20am%20interested%20in%20Institute%20plan", "_blank");
+          } else {
+            router.push("/register");
+          }
+        }}
+        className={`w-full py-3.5 rounded-xl font-bold text-[12px] uppercase tracking-wider transition active:scale-[0.97] ${
+          plan.highlight
+            ? "bg-[#a84a36] hover:bg-[#b7523d] text-white shadow-md shadow-[#3d1810]/40"
+            : "bg-[#070c08] hover:bg-[#0e1c12] text-emerald-400 border border-[#182c1e]"
+        }`}
+      >
+        {plan.cta}
+      </button>
     </div>
   );
 }
