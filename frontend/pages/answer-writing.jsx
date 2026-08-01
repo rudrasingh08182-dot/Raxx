@@ -76,7 +76,7 @@ export default function AnswerWriting() {
     if (!examType || !subject) return;
     setLoadingQuestions(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/answer/questions", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/answer/questions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ exam_type: examType, subject }),
@@ -109,7 +109,7 @@ export default function AnswerWriting() {
 
     setLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/answer/evaluate-image", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/answer/evaluate-image`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

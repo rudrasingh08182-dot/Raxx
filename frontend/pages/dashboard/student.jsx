@@ -118,7 +118,7 @@ export default function StudentDashboardMobile() {
     if (!newTaskText.trim()) return;
     setAddingTask(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/tasks/add", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks/add`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ student_id: user.id, task_text: newTaskText.trim() }),

@@ -50,7 +50,7 @@ export default function Scholarships() {
     if (!isFormValid) return;
     setStep("loading");
     try {
-      const res = await fetch("http://127.0.0.1:8000/scholarship/find", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/scholarship/find`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

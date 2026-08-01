@@ -46,7 +46,7 @@ export default function JoinBatch() {
     setError("");
     setSuccess(null);
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/batch/join", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/batch/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -369,7 +369,7 @@ function StudentUpdatesModal({ batch, student, onClose }) {
     }
     setPostingReply((prev) => ({ ...prev, [announcementId]: true }));
     try {
-      const res = await fetch("http://127.0.0.1:8000/announcements/reply", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/announcements/reply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

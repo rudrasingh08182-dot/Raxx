@@ -388,7 +388,7 @@ export default function MockInterviewMobile() {
     }
     setLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/interview/start", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/interview/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -425,7 +425,7 @@ export default function MockInterviewMobile() {
     setScreen("evaluation");
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/interview/evaluate", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/interview/evaluate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -468,7 +468,7 @@ export default function MockInterviewMobile() {
     const avgScore = evaluations.reduce((a, b) => a + (b.score || 0), 0) / evaluations.length;
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/interview/report", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/interview/report`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

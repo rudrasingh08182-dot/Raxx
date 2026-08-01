@@ -73,7 +73,7 @@ export default function CodingEditorMobile() {
     setActiveTab("output");
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/coding/run", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/coding/run`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code, language: language.id, stdin }),
@@ -100,7 +100,7 @@ export default function CodingEditorMobile() {
     setActiveTab("ai");
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/coding/ai-tutor", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/coding/ai-tutor`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: aiQuestion, language: language.id, code }),
@@ -120,7 +120,7 @@ export default function CodingEditorMobile() {
     setActiveTab("review");
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/coding/review", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/coding/review`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code, language: language.id }),

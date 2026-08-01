@@ -68,7 +68,7 @@ export default function MockTest() {
     setError("");
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/mocktest/generate", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/mocktest/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -108,7 +108,7 @@ export default function MockTest() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/mocktest/submit", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/mocktest/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ questions, answers }),

@@ -106,7 +106,7 @@ export default function SpeedMath() {
       if (!userData) return;
       const user = JSON.parse(userData);
 
-      await fetch("http://127.0.0.1:8000/games/save-score", {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/games/save-score`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

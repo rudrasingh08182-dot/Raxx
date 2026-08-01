@@ -168,7 +168,7 @@ export default function Sudoku() {
       if (!userData) return;
       const user = JSON.parse(userData);
       const coinsEarned = difficulty === "easy" ? 30 : difficulty === "medium" ? 50 : 80;
-      await fetch("http://127.0.0.1:8000/games/save-score", {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/games/save-score`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -223,7 +223,7 @@ export default function Sudoku() {
       if (!userData) return;
       const user = JSON.parse(userData);
       const coinsEarned = difficulty === "easy" ? 20 : difficulty === "medium" ? 35 : 60;
-      await fetch("http://127.0.0.1:8000/games/save-score", {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/games/save-score`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
