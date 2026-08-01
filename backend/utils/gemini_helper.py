@@ -1,17 +1,18 @@
 # backend/utils/gemini_helper.py
 # RAXX AI — Central AI Helper via Amazon Bedrock (Claude Sonnet 4.6)
+# backend/utils/gemini_helper.py
+# RAXX AI — Central AI Helper via Anthropic API (Claude)
 
-import boto3
-import json
+import anthropic
 import os
 
-def get_bedrock_client():
-    return boto3.client(
-        service_name='bedrock-runtime',
-        region_name='us-east-1',
-        aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-        aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+def get_anthropic_client():
+    return anthropic.Anthropic(
+        api_key=os.getenv("ANTHROPIC_API_KEY"),
     )
+
+# Update this if Anthropic renames/updates the model string later
+MODEL_NAME = "claude-sonnet-4-6"
 
 RAXX_SYSTEM_PROMPT = """
 You are RAXX AI, India's smartest AI study assistant built for every Indian student.
@@ -82,37 +83,40 @@ def ask_raxx_ai(
     if extra_context:
         feature_instruction += f"\n\nExtra Context: {extra_context}"
 
-    full_prompt = f"{RAXX_SYSTEM_PROMPT}\n\n{SYLLABUS_CONTEXT}\n\n{feature_instruction}\n\nStudent Question: {question}"
+    full_prompt = f"{SYLLABUS_CONTEXT}\n\n{feature_instruction}\n\nStudent Question: {question}"
 
     try:
-        client = get_bedrock_client()
+        client = get_anthropic_client()
 
-        body = json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 1500,
-            "system": RAXX_SYSTEM_PROMPT,
-            "messages": [
+        response = client.messages.create(
+            model=MODEL_NAME,
+            max_tokens=1500,
+            system=[
+                {
+                    "type": "text",
+                    "text": RAXX_SYSTEM_PROMPT,
+                    # Caches the system prompt so repeated requests are cheaper/faster.
+                    # Needs ANTHROPIC_API_KEY to be a direct Anthropic key (not Bedrock).
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
+            messages=[
                 {
                     "role": "user",
                     "content": full_prompt
                 }
             ]
-        })
-
-        response = client.invoke_model(
-            modelId="us.anthropic.claude-sonnet-4-6-20250514-v1:0",
-            body=body
         )
 
-        response_body = json.loads(response['body'].read())
-        answer = response_body['content'][0]['text']
+        answer = response.content[0].text
 
+        usage = response.usage
         return {
             "success": True,
             "answer": answer,
-            "tokens_used": 0,
-            "cache_created": 0,
-            "cache_read": 0,
+            "tokens_used": usage.input_tokens + usage.output_tokens,
+            "cache_created": getattr(usage, "cache_creation_input_tokens", 0) or 0,
+            "cache_read": getattr(usage, "cache_read_input_tokens", 0) or 0,
         }
 
     except Exception as e:

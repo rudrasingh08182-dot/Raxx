@@ -21,3 +21,7 @@ frontend/.next/
 # OS/Editor
 .DS_Store
 .vscode/
+
+__pycache__/
+backend/**/__pycache__/
+*.pyc
