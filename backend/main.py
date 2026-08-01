@@ -39,8 +39,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",      # Next.js frontend (local)
-        "https://raxx-ai.vercel.app"  # Vercel frontend (production)
+        "http://localhost:3000",
+        "https://raxx-theta.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
