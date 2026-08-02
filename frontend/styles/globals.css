@@ -24,3 +24,50 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ── Design tokens + animations for the new Auth UI (login/register) ── */
+:root {
+  --background: oklch(0.13 0.008 160);
+  --foreground: oklch(0.98 0.005 160);
+  --card: oklch(0.18 0.012 165);
+  --primary: oklch(0.85 0.22 156);
+  --primary-foreground: oklch(0.16 0.02 160);
+  --primary-glow: oklch(0.9 0.2 162);
+  --muted-foreground: oklch(0.68 0.015 165);
+  --destructive: oklch(0.62 0.22 22);
+  --destructive-foreground: oklch(0.98 0.005 160);
+  --border: oklch(0.98 0.005 160 / 10%);
+  --ring: oklch(0.85 0.22 156 / 50%);
+
+  --gradient-emerald: linear-gradient(135deg, oklch(0.85 0.22 156), oklch(0.92 0.19 168));
+  --glass-bg: oklch(0.98 0.005 160 / 5%);
+  --glass-border: oklch(0.98 0.005 160 / 10%);
+  --shadow-glow: 0 18px 60px -18px oklch(0.85 0.22 156 / 45%);
+  --shadow-float: 0 30px 80px -30px oklch(0 0 0 / 90%);
+}
+
+.glass-panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(28px) saturate(140%);
+  box-shadow: var(--shadow-float), inset 0 1px 0 0 oklch(1 0 0 / 8%);
+}
+.glow-ring {
+  box-shadow: var(--shadow-glow);
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-18px, -28px) scale(1.08); }
+}
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.65; }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-float-slow { animation: float-slow 14s ease-in-out infinite; }
+.animate-pulse-glow { animation: pulse-glow 6s ease-in-out infinite; }
+.animate-rise { animation: rise 0.7s cubic-bezier(0.22,1,0.36,1) both; }
