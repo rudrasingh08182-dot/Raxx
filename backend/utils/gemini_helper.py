@@ -1,10 +1,14 @@
 # backend/utils/gemini_helper.py
-# RAXX AI — Central AI Helper via Amazon Bedrock (Claude Sonnet 4.6)
-# backend/utils/gemini_helper.py
 # RAXX AI — Central AI Helper via Anthropic API (Claude)
+# Now RAG-aware for the "doubt" feature: retrieves relevant chunks from the
+# knowledge base (built by the knowledge-pipeline tool) and grounds Claude's
+# answer in them when available. Falls back to answering without retrieval
+# if nothing is found yet (e.g. before any content has been ingested) —
+# this never breaks the feature, it just doesn't get grounded until content exists.
 
 import anthropic
 import os
+from utils.rag_retrieval import search_knowledge
 
 def get_anthropic_client():
     return anthropic.Anthropic(
@@ -12,7 +16,7 @@ def get_anthropic_client():
     )
 
 # Update this if Anthropic renames/updates the model string later
-MODEL_NAME = "claude-sonnet-4-6"
+MODEL_NAME = "claude-sonnet-5"
 
 RAXX_SYSTEM_PROMPT = """
 You are RAXX AI, India's smartest AI study assistant built for every Indian student.
@@ -26,6 +30,10 @@ Your Rules:
 - Keep answers concise but complete
 - Use emojis occasionally to make it friendly
 - Never give wrong information — if unsure, say so
+- If reference material is provided below (marked REFERENCE MATERIAL), base your
+  answer on it and mention the source (e.g. "Source: NCERT Class 10 Maths, Real Numbers").
+  If the reference material doesn't cover the question, answer from your own
+  knowledge as usual, without claiming a source.
 """
 
 SYLLABUS_CONTEXT = """
@@ -58,12 +66,44 @@ GOVERNMENT EXAMS: UPSC, SSC, Railway, Banking
 CODING: C, C++, Python, Java, JavaScript
 """
 
+
+def _build_rag_context(question: str, board: str, grade: str, subject: str = ""):
+    """
+    Tries to retrieve relevant knowledge-base chunks for a school-level doubt.
+    Returns a formatted context string, or "" if nothing relevant was found
+    (e.g. content not ingested for this topic yet, or GEMINI_API_KEY not set).
+    """
+    level = None
+    if grade and str(grade).strip().isdigit():
+        level = f"class-{grade}"
+
+    chunks = search_knowledge(
+        query=question,
+        category="school",
+        level=level,
+        subject=subject.lower() if subject else None,
+        top_k=4,
+    )
+
+    if not chunks:
+        return ""
+
+    parts = []
+    for c in chunks:
+        title = c.get("title", "Untitled")
+        content = c.get("content", "")
+        parts.append(f"[{title}]\n{content}")
+
+    return "\n\n---\n\nREFERENCE MATERIAL (from RAXX AI's verified knowledge base):\n\n" + "\n\n---\n\n".join(parts)
+
+
 def ask_raxx_ai(
     question: str,
     feature: str = "doubt",
     language: str = "Hindi",
     board: str = "CBSE",
     grade: str = "12",
+    subject: str = "",
     extra_context: str = ""
 ) -> dict:
 
@@ -83,7 +123,13 @@ def ask_raxx_ai(
     if extra_context:
         feature_instruction += f"\n\nExtra Context: {extra_context}"
 
-    full_prompt = f"{SYLLABUS_CONTEXT}\n\n{feature_instruction}\n\nStudent Question: {question}"
+    # RAG: only wired for "doubt" right now. Other features still work exactly
+    # as before — extend this to more features once more content is ingested.
+    rag_context = ""
+    if feature == "doubt":
+        rag_context = _build_rag_context(question, board, grade, subject)
+
+    full_prompt = f"{SYLLABUS_CONTEXT}\n\n{feature_instruction}{rag_context}\n\nStudent Question: {question}"
 
     try:
         client = get_anthropic_client()
@@ -95,8 +141,6 @@ def ask_raxx_ai(
                 {
                     "type": "text",
                     "text": RAXX_SYSTEM_PROMPT,
-                    # Caches the system prompt so repeated requests are cheaper/faster.
-                    # Needs ANTHROPIC_API_KEY to be a direct Anthropic key (not Bedrock).
                     "cache_control": {"type": "ephemeral"},
                 }
             ],
@@ -117,6 +161,7 @@ def ask_raxx_ai(
             "tokens_used": usage.input_tokens + usage.output_tokens,
             "cache_created": getattr(usage, "cache_creation_input_tokens", 0) or 0,
             "cache_read": getattr(usage, "cache_read_input_tokens", 0) or 0,
+            "grounded": bool(rag_context),
         }
 
     except Exception as e:

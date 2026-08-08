@@ -20,13 +20,14 @@ def solve_doubt(doubt: DoubtRequest):
         if doubt.subject:
             question = f"Subject: {doubt.subject}\n\nDoubt: {doubt.question}"
 
-        # gemini_helper se call karo — caching automatic!
+        # gemini_helper se call karo — ab RAG-aware (doubt feature ke liye) + caching
         result = ask_raxx_ai(
             question=question,
             feature="doubt",
             language=doubt.language,
             board=doubt.board,
             grade=doubt.grade,
+            subject=doubt.subject,
         )
 
         if not result["success"]:
@@ -38,7 +39,8 @@ def solve_doubt(doubt: DoubtRequest):
             "answer": result["answer"],
             "subject": doubt.subject,
             "language": doubt.language,
-            "cache_read": result["cache_read"],      # 0 = pehli baar, >0 = cached!
+            "grounded": result.get("grounded", False),  # true = answer used your knowledge base
+            "cache_read": result["cache_read"],
             "tokens_used": result["tokens_used"],
         }
 
