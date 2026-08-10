@@ -334,33 +334,36 @@ function StudentUpdatesModal({ batch, student, onClose }) {
   };
 
   const uploadReplyFile = async (announcementId, file) => {
-    setUploadingReply((prev) => ({ ...prev, [announcementId]: true }));
-    try {
-      const fileName = `${Date.now()}_${file.name}`;
-      const { data, error } = await supabase.storage
-        .from("batch-files")
-        .upload(fileName, file, { cacheControl: "3600", upsert: false });
+  setUploadingReply((prev) => ({ ...prev, [announcementId]: true }));
+  try {
+    const fileName = `${Date.now()}_${file.name}`;
+    const { data, error } = await supabase.storage
+      .from("batch-files")
+      .upload(fileName, file, { cacheControl: "3600", upsert: false });
 
-      if (error) throw error;
+    if (error) throw error;
 
-      const { data: urlData } = supabase.storage
-        .from("batch-files")
-        .getPublicUrl(fileName);
+    // Signed URL (bucket ab private hai) — 10 saal ki expiry
+    const { data: signedData, error: signError } = await supabase.storage
+      .from("batch-files")
+      .createSignedUrl(fileName, 60 * 60 * 24 * 365 * 10);
 
-      setReplyFileUrl((prev) => ({
-        ...prev,
-        [announcementId]: urlData.publicUrl,
-      }));
-      setReplyFileName((prev) => ({
-        ...prev,
-        [announcementId]: file.name,
-      }));
-    } catch (err) {
-      alert("Upload failed!");
-      console.error(err);
-    }
-    setUploadingReply((prev) => ({ ...prev, [announcementId]: false }));
-  };
+    if (signError) throw signError;
+
+    setReplyFileUrl((prev) => ({
+      ...prev,
+      [announcementId]: signedData.signedUrl,
+    }));
+    setReplyFileName((prev) => ({
+      ...prev,
+      [announcementId]: file.name,
+    }));
+  } catch (err) {
+    alert("Upload failed!");
+    console.error(err);
+  }
+  setUploadingReply((prev) => ({ ...prev, [announcementId]: false }));
+};
 
   const postReply = async (announcementId) => {
     if (!replyText[announcementId]?.trim() && !replyFileUrl[announcementId]) {
