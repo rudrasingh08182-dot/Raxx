@@ -77,33 +77,35 @@ export default function Homework() {
   };
 
   const uploadPdf = async (file) => {
-    if (!file) return null;
-    setUploadingPdf(true);
-    try {
-      const fileName = `${Date.now()}_${file.name}`;
-      const { data, error } = await supabase.storage
-        .from("homework-files")
-        .upload(fileName, file, {
-          cacheControl: "3600",
-          upsert: false,
-        });
+  if (!file) return null;
+  setUploadingPdf(true);
+  try {
+    const fileName = `${Date.now()}_${file.name}`;
+    const { data, error } = await supabase.storage
+      .from("homework-files")
+      .upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
 
-      if (error) throw error;
+    if (error) throw error;
 
-      const { data: urlData } = supabase.storage
-        .from("homework-files")
-        .getPublicUrl(fileName);
+    // Signed URL (bucket ab private hai) — 10 saal ki expiry, practically permanent
+    const { data: signedData, error: signError } = await supabase.storage
+      .from("homework-files")
+      .createSignedUrl(fileName, 60 * 60 * 24 * 365 * 10);
 
-      setPdfUploaded(true);
-      setUploadingPdf(false);
-      return urlData.publicUrl;
-    } catch (err) {
-      console.error("Upload error:", err);
-      setUploadingPdf(false);
-      return null;
-    }
-  };
+    if (signError) throw signError;
 
+    setPdfUploaded(true);
+    setUploadingPdf(false);
+    return signedData.signedUrl;
+  } catch (err) {
+    console.error("Upload error:", err);
+    setUploadingPdf(false);
+    return null;
+  }
+};
   const submitHomework = async () => {
     if (!answerText.trim() && !answerFileUrl.trim()) {
       setError("Please write your answer or paste a PDF link!");
