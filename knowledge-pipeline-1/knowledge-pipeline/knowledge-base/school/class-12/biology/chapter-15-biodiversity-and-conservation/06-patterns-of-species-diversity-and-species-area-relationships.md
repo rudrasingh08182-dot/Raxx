@@ -1,0 +1,39 @@
+---
+type: concept
+title: Patterns of Species Diversity and Species-Area Relationships
+category: school
+subject: biology
+level: class-12
+chapter: 15
+chapter_name: Biodiversity-and-Conservation
+content_type: concept
+tags:
+- biology
+- class12
+- ecosystem-stability
+- alexander-von-humboldt
+- biodiversity
+- species-area-relationship
+- Biodiversity-and-Conservation
+- ecology
+---
+
+262 BIOLOGY
+
+evolutionary time for species diversification, (b) Tropical environments, unlike temperate ones, are less seasonal, relatively more constant and predictable. Such constant environments promote niche specialisation and lead to a greater species diversity and (c) There is more solar energy available in the tropics, which contributes to higher productivity; this in turn might contribute indirectly to greater diversity.
+
+(ii) Species-Area relationships: During his pioneering and extensive explorations in the wilderness of South American jungles, the great German naturalist and geographer Alexander von Humboldt observed that within a region species richness increased with increasing explored area, but only up to a limit. In fact, the relation between species richness and area for a wide variety of taxa (angiosperm plants, birds, bats, freshwater fishes) turns out to be a rectangular hyperbola (Figure 15.2). On a logarithmic scale, the relationship is a straight line described by the equation:
+
+$\log S = \log C + Z \log A$
+
+where
+$S$ = Species richness
+$A$ = Area
+$Z$ = slope of the line (regression coefficient)
+$C$ = Y-intercept
+
+Ecologists have discovered that the value of $Z$ lies in the range of 0.1 to 0.2, regardless of the taxonomic group or the region (whether it is the plants in Britain, birds in California or molluscs in New York state, the slopes of the regression line are amazingly similar). But, if you analyse the species-area relationships among very large areas like the entire continents, you will find that the slope of the line to be much steeper ($Z$ values in the range of 0.6 to 1.2). For example, for frugivorous (fruit-eating) birds and mammals in the tropical forests of different continents, the slope is found to be 1.15. What do steeper slopes mean in this context?
+
+15.1.3 The importance of Species Diversity to the Ecosystem
+
+Does the number of species in a community really matter to the functioning of the ecosystem? This is a question for which ecologists have not been able to give a definitive answer. For many decades, ecologists believed that communities with more species, generally, tend to be more stable than those with less species.

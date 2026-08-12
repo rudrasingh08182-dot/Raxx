@@ -1,0 +1,32 @@
+---
+type: concept
+title: Introduction to Molecular Basis of Inheritance and Evolution
+category: school
+subject: biology
+level: class-12
+chapter: 5
+chapter_name: Principle-of-Inheritance-and-Variation
+content_type: concept
+tags:
+- biology
+- dna-structure
+- genetics
+- evolution
+- class12
+- molecular-biology
+- inheritance-patterns
+- Principle-of-Inheritance-and-Variation
+---
+
+The work of Mendel and others who followed him gave us an idea of inheritance patterns. However, the nature of those ‘factors’ which determine the phenotype was not very clear. As these ‘factors’ represent the genetic basis of inheritance, understanding the structure of genetic material and the structural basis of genotype and phenotype conversion became the focus of attention in biology for the next century. The entire body of molecular biology was a consequent development with major contributions from Watson, Crick, Nirenberg, Khorana, Kornbergs (father and son), Benzer, Monod, Brenner, etc. A parallel problem being tackled was the mechanism of evolution. Awareness in the areas of molecular genetics, structural biology and bioinformatics have enriched our understanding of the molecular basis of evolution. In this unit, the structure and function of DNA and the story and theory of evolution have been examined and explained.
+
+### Chapter 5
+Principles of Inheritance and Variation
+
+### Chapter 6
+Molecular Basis of Inheritance
+
+### Chapter 7
+Evolution
+
+2020-21

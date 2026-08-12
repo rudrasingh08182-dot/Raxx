@@ -1,0 +1,47 @@
+---
+type: concept
+title: Conceptual Questions and Solutions on Electron Drift and Mobility
+category: school
+subject: Physics
+level: class-12
+chapter: 3
+chapter_name: CURRENT ELECTRICITY
+content_type: solved-example
+tags:
+- class12
+- electron-mobility
+- charge-carriers
+- electric-current
+- Physics
+- conductor-physics
+- CURRENT ELECTRICITY
+- electron-drift
+---
+
+### Example 3.2
+
+(a) In Example 3.1, the electron drift speed is estimated to be only a few mm s⁻¹ for currents in the range of a few amperes. How then is current established almost the instant a circuit is closed?
+
+(b) The electron drift arises due to the force experienced by electrons in the electric field inside the conductor. But force should cause acceleration. Why then do the electrons acquire a steady average drift speed?
+
+(c) If the electron drift speed is so small, and the electron’s charge is small, how can we still obtain large amounts of current in a conductor?
+
+(d) When electrons drift in a metal from lower to higher potential, does it mean that all the ‘free’ electrons of the metal are moving in the same direction?
+
+(e) Are the paths of electrons straight lines between successive collisions (with the positive ions of the metal) in the (i) absence of electric field, (ii) presence of electric field?
+
+**Solution**
+
+(a) Electric field is established throughout the circuit, almost instantly (with the speed of light) causing at every point a local electron drift. Establishment of a current does not have to wait for electrons from one end of the conductor travelling to the other end. However, it does take a little while for the current to reach its steady value.
+
+(b) Each ‘free’ electron does accelerate, increasing its drift speed until it collides with a positive ion of the metal. It loses its drift speed after collision but starts to accelerate and increases its drift speed again only to suffer a collision again and so on. On the average, therefore, electrons acquire only a drift speed.
+
+(c) Simple, because the electron number density is enormous, $\sim 10^{29} \text{ m}^{-3}$.
+
+(d) By no means. The drift velocity is superposed over the large random velocities of electrons.
+
+(e) In the absence of electric field, the paths are straight lines; in the presence of electric field, the paths are, in general, curved.
+
+### 3.5.1 Mobility
+
+As we have seen, conductivity arises from mobile charge carriers. In metals, these mobile charge carriers are electrons; in an ionised gas, they are electrons and positive charged ions; in an electrolyte, these can be both positive and negative ions.

@@ -1,0 +1,25 @@
+---
+type: concept
+title: Proton Gradient and ATP Synthesis in Photosynthesis
+category: school
+subject: Biology
+level: class-11
+chapter: 11
+chapter_name: PHOTOSYNTHESIS IN HIGHER PLANTS
+content_type: concept
+tags:
+- atp-synthesis
+- PHOTOSYNTHESIS IN HIGHER PLANTS
+- class12
+- photosynthesis
+- proton-gradient
+- chemiosmosis
+- thylakoid-membrane
+- Biology
+---
+
+(b) As electrons move through the photosystems, protons are transported across the membrane. This happens because the primary acceptor of electron which is located towards the outer side of the membrane transfers its electron not to an electron carrier but to an H carrier. Hence, this molecule removes a proton from the stroma while transporting an electron. When this molecule passes on its electron to the electron carrier on the inner side of the membrane, the proton is released into the inner side or the lumen side of the membrane.
+
+(c) The NADP reductase enzyme is located on the stroma side of the membrane. Along with electrons that come from the acceptor of electrons of PS I, protons are necessary for the reduction of $NADP^+$ to $NADPH + H^+$. These protons are also removed from the stroma. Hence, within the chloroplast, protons in the stroma decrease in number, while in the lumen there is accumulation of protons. This creates a proton gradient across the thylakoid membrane as well as a measurable decrease in pH in the lumen.
+
+Why are we so interested in the proton gradient? This gradient is important because it is the breakdown of this gradient that leads to the synthesis of ATP. The gradient is broken down due to the movement of protons across the membrane to the stroma through the transmembrane channel of the $CF_0$ of the ATP synthase. (Figure 11.7 ATP synthesis through chemiosmosis)

@@ -1,0 +1,41 @@
+---
+type: concept
+title: 'Biological Classification: Dinoflagellates, Euglenoids, Slime Moulds, and
+  Protozoans'
+category: school
+subject: Biology
+level: class-11
+chapter: 2
+chapter_name: BIOLOGICAL CLASSIFICATION
+content_type: concept
+tags:
+- BIOLOGICAL CLASSIFICATION
+- euglenoids
+- protozoans
+- protista
+- Biology
+- slime-moulds
+- biological-classification
+- class12
+- dinoflagellates
+---
+
+### 2.2.2 Dinoflagellates
+These organisms are mostly marine and photosynthetic. They appear yellow, green, brown, blue or red depending on the main pigments present in their cells. The cell wall has stiff cellulose plates on the outer surface. Most of them have two flagella; one lies longitudinally and the other transversely in a furrow between the wall plates. Very often, red dinoflagellates (Example: Gonyaulax) undergo such rapid multiplication that they make the sea appear red (red tides). Toxins released by such large numbers may even kill other marine animals such as fishes.
+
+### 2.2.3 Euglenoids
+Majority of them are fresh water organisms found in stagnant water. Instead of a cell wall, they have a protein rich layer called pellicle which makes their body flexible. They have two flagella, a short and a long one. Though they are photosynthetic in the presence of sunlight, when deprived of sunlight they behave like heterotrophs by predating on other smaller organisms. Interestingly, the pigments of euglenoids are identical to those present in higher plants. Example: Euglena (Figure 2.4b).
+
+### 2.2.4 Slime Moulds
+Slime moulds are saprophytic protists. The body moves along decaying twigs and leaves engulfing organic material. Under suitable conditions, they form an aggregation called plasmodium which may grow and spread over several feet. During unfavourable conditions, the plasmodium differentiates and forms fruiting bodies bearing spores at their tips. The spores possess true walls. They are extremely resistant and survive for many years, even under adverse conditions. The spores are dispersed by air currents.
+
+### 2.2.5 Protozoans
+All protozoans are heterotrophs and live as predators or parasites. They are believed to be primitive relatives of animals. There are four major groups of protozoans.
+
+Amoeboid protozoans: These organisms live in fresh water, sea water or moist soil. They move and capture prey by putting out pseudopodia (false feet) as in Amoeba. Marine forms have silica shells on their surface. Some of them, such as Entamoeba, are parasites.
+
+Figure 2.4 (a) Dinoflagellates (b) Euglena (c) Slime mould (d) Paramoecium
+
+(a) (b) (c) (d)
+
+Reprint 2026-27

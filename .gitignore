@@ -1,27 +1,32 @@
-# Environment files - NEVER commit these
+
 .env
 .env.local
 .env.*.local
+
 backend/.env
 frontend/.env
 frontend/.env.local
 
-# Python
+
+
 venv/
 .venv/
+
 __pycache__/
+**/__pycache__/
+
 *.pyc
 
-# Node
+
+
+
 node_modules/
 .next/
+
 frontend/node_modules/
 frontend/.next/
 
-# OS/Editor
+
+
 .DS_Store
 .vscode/
-
-__pycache__/
-backend/**/__pycache__/
-*.pyc

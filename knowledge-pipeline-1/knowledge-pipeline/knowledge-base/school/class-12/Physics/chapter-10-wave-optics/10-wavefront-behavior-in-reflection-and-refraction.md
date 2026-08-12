@@ -1,0 +1,34 @@
+---
+type: concept
+title: Wavefront Behavior in Reflection and Refraction
+category: school
+subject: Physics
+level: class-12
+chapter: 10
+chapter_name: WAVE OPTICS
+content_type: concept
+tags:
+- Physics
+- refraction
+- class12
+- WAVE OPTICS
+- optical-elements
+- wavefronts
+- wave-optics
+- reflection
+---
+
+261
+Wave Optics
+
+FIGURE 10.6 Reflection of a plane wave AB by the reflecting surface MN. AB and CE represent incident and reflected wavefronts.
+
+FIGURE 10.7 Refraction of a plane wave by (a) a thin prism, (b) a convex lens. (c) Reflection of a plane wave by a concave mirror.
+
+If we now consider the triangles EAC and BAC we will find that they are congruent and therefore, the angles $i$ and $r$ (as shown in Fig. 10.6) would be equal. This is the law of reflection.
+
+Once we have the laws of reflection and refraction, the behaviour of prisms, lenses, and mirrors can be understood. These phenomena were discussed in detail in Chapter 9 on the basis of rectilinear propagation of light. Here we just describe the behaviour of the wavefronts as they undergo reflection or refraction. In Fig. 10.7(a) we consider a plane wave passing through a thin prism. Clearly, since the speed of light waves is less in glass, the lower portion of the incoming wavefront (which travels through the greatest thickness of glass) will get delayed resulting in a tilt in the emerging wavefront as shown in the figure. In Fig. 10.7(b) we consider a plane wave incident on a thin convex lens; the central part of the incident plane wave traverses the thickest portion of the lens and is delayed the most. The emerging wavefront has a depression at the centre and therefore the wavefront becomes spherical and converges to the point F which is known as the focus. In Fig. 10.7(c) a plane wave is incident on a concave mirror and on reflection we have a spherical wave converging to the focal point F. In a similar manner, we can understand refraction and reflection by concave lenses and convex mirrors.
+
+From the above discussion it follows that the total time taken from a point on the object to the corresponding point on the image is the same measured along any ray. For example, when a convex lens focusses light to form a real image, although the ray going through the centre traverses a shorter path, but because of the slower speed in glass, the time taken is the same as for rays travelling near the edge of the lens.
+
+Reprint 2026-27

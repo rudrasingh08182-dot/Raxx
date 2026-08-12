@@ -1,0 +1,31 @@
+---
+type: concept
+title: Introduction to Organism and its Environment in Ecology
+category: school
+subject: biology
+level: class-12
+chapter: 13
+chapter_name: Organisms-and-Populations
+content_type: concept
+tags:
+- Organisms-and-Populations
+- biome-distribution
+- organism-environment-interaction
+- habitat-diversity
+- class12
+- biology
+- ecology
+- biological-organisation
+---
+
+Ecology is a subject which studies the interactions among organisms and between the organism and its physical (abiotic) environment. Ecology is basically concerned with four levels of biological organisation – organisms, populations, communities and biomes. In this chapter we explore ecology at organismic and population levels.
+
+### 13.1 ORGANISM AND ITS ENVIRONMENT
+
+Ecology at the organismic level is essentially physiological ecology which tries to understand how different organisms are adapted to their environments in terms of not only survival but also reproduction. You may have learnt in earlier classes how the rotation of our planet around the Sun and the tilt of its axis cause annual variations in the intensity and duration of temperature, resulting in distinct seasons. These variations together with annual variation in precipitation (remember precipitation includes both rain and snow) account for the formation of major biomes such as desert, rain forest and tundra (Figure 13.1).
+
+**Figure 13.1 Biome distribution with respect to annual temperature and precipitation**
+
+Regional and local variations within each biome lead to the formation of a wide variety of habitats. Major biomes of India are shown in Figure 13.2.
+
+On planet Earth, life exists not just in a few favourable habitats but even in extreme and harsh habitats – scorching Rajasthan desert, rain-soaked Meghalaya forests, deep ocean trenches, torrential streams, permafrost (snow laden) polar regions, high mountain tops, thermal springs, and stinking compost pits, to name a few. Even our intestine is a unique habitat for hundreds of species of microbes.

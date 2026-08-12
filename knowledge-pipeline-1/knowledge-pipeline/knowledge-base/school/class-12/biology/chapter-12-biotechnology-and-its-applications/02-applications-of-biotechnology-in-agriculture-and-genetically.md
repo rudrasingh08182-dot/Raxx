@@ -1,0 +1,32 @@
+---
+type: concept
+title: Applications of Biotechnology in Agriculture and Genetically Modified Organisms
+category: school
+subject: biology
+level: class-12
+chapter: 12
+chapter_name: Biotechnology-and-its-Applications
+content_type: concept
+tags:
+- agriculture
+- biotechnology
+- gmo
+- Biotechnology-and-its-Applications
+- biology
+- genetically-modified-organisms
+- class12
+- bt-cotton
+---
+
+208 BIOLOGY
+
+(ii) organic agriculture; and
+(iii) genetically engineered crop-based agriculture. The Green Revolution succeeded in tripling the food supply but yet it was not enough to feed the growing human population. Increased yields have partly been due to the use of improved crop varieties, but mainly due to the use of better management practices and use of agrochemicals (fertilisers and pesticides). However, for farmers in the developing world, agrochemicals are often too expensive, and further increases in yield with existing varieties are not possible using conventional breeding. Is there any alternative path that our understanding of genetics can show so that farmers may obtain maximum yield from their fields? Is there a way to minimise the use of fertilisers and chemicals so that their harmful effects on the environment are reduced? Use of genetically modified crops is a possible solution. Plants, bacteria, fungi and animals whose genes have been altered by manipulation are called Genetically Modified Organisms (GMO). GM plants have been useful in many ways. Genetic modification has:
+
+(i) made crops more tolerant to abiotic stresses (cold, drought, salt, heat).
+(ii) reduced reliance on chemical pesticides (pest-resistant crops).
+(iii) helped to reduce post harvest losses.
+(iv) increased efficiency of mineral usage by plants (this prevents early exhaustion of fertility of soil).
+(v) enhanced nutritional value of food, e.g., golden rice, i.e., Vitamin ‘A’ enriched rice.
+
+In addition to these uses, GM has been used to create tailor-made plants to supply alternative resources to industries, in the form of starches, fuels and pharmaceuticals. Some of the applications of biotechnology in agriculture that you will study in detail are the production of pest resistant plants, which could decrease the amount of pesticide used. Bt toxin is produced by a bacterium called Bacillus thuringiensis (Bt for short). Bt toxin gene has been cloned from the bacteria and been expressed in plants to provide resistance to insects without the need for insecticides; in effect created a bio-pesticide. Examples are Bt cotton, Bt corn, rice, tomato, potato and soyabean etc.

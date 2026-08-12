@@ -1,0 +1,27 @@
+---
+type: concept
+title: The Discovery of Recombinant DNA Technology by Herbert Boyer and Stanley Cohen
+category: school
+subject: biology
+level: class-12
+chapter: 11
+chapter_name: Biotechnology-Principles-and-Processesn
+content_type: concept
+tags:
+- Biotechnology-Principles-and-Processesn
+- stanley-cohen
+- class12
+- genetic-engineering
+- herbert-boyer
+- biology
+- recombinant-dna
+- biotechnology
+---
+
+Herbert Boyer was born in 1936 and brought up in a corner of western Pennsylvania where railroads and mines were the destiny of most young men. He completed graduate work at the University of Pittsburgh in 1963, followed by three years of post-graduate studies at Yale.
+
+In 1966, Boyer took an assistant professorship at the University of California at San Francisco. By 1969, he performed studies on a couple of restriction enzymes of the *E. coli* bacterium with especially useful properties. Boyer observed that these enzymes have the capability of cutting DNA strands in a particular fashion, which left what has become known as ‘sticky ends’ on the strands. These clipped ends made pasting together pieces of DNA a precise exercise.
+
+This discovery, in turn, led to a rich and rewarding conversation in Hawaii with a Stanford scientist named Stanley Cohen. Cohen had been studying small ringlets of DNA called plasmids which float about freely in the cytoplasm of certain bacterial cells and replicate independently from the coding strand of DNA. Cohen had developed a method of removing these plasmids from the cell and then reinserting them in other cells. Combining this process with that of DNA splicing enabled Boyer and Cohen to recombine segments of DNA in desired configurations and insert the DNA in bacterial cells, which could then act as manufacturing plants for specific proteins. This breakthrough was the basis upon which the discipline of biotechnology was founded.
+
+**HERBERT BOYER (1936)**

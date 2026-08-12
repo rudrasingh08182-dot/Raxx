@@ -1,0 +1,34 @@
+---
+type: concept
+title: Introduction to Wave Optics and Historical Models of Light
+category: school
+subject: Physics
+level: class-12
+chapter: 10
+chapter_name: WAVE OPTICS
+content_type: concept
+tags:
+- Physics
+- history-of-physics
+- refraction
+- class12
+- WAVE OPTICS
+- huygens-wave-theory
+- wave-optics
+- corpuscular-model
+---
+
+255
+Wave Optics
+Chapter Ten
+WAVE OPTICS
+
+10.1 INTRODUCTION
+
+In 1637, Descartes gave the corpuscular model of light and derived Snell’s law. It explained the laws of reflection and refraction of light at an interface. The corpuscular model predicted that if the ray of light (on refraction) bends towards the normal then the speed of light would be greater in the second medium. This corpuscular model of light was further developed by Isaac Newton in his famous book entitled OPTICKS and because of the tremendous popularity of this book, the corpuscular model is very often attributed to Newton.
+
+In 1678, the Dutch physicist Christiaan Huygens put forward the wave theory of light – it is this wave model of light that we will discuss in this chapter. As we will see, the wave model could satisfactorily explain the phenomena of reflection and refraction; however, it predicted that on refraction if the wave bends towards the normal then the speed of light would be less in the second medium. This is in contradiction to the prediction made by using the corpuscular model of light. It was much later confirmed by experiments where it was shown that the speed of light in water is less than the speed in air confirming the prediction of the wave model; Foucault carried out this experiment in 1850.
+
+The wave theory was not readily accepted primarily because of Newton’s authority and also because light could travel through vacuum.
+
+Reprint 2026-27

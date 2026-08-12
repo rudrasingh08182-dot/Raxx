@@ -1,0 +1,41 @@
+---
+type: concept
+title: Conditional Probability Concepts and Exercise Problems
+category: school
+subject: Maths
+level: class-12
+chapter: 13
+chapter_name: PROBABILITY
+content_type: solved-example
+tags:
+- PROBABILITY
+- Maths
+- class12
+- conditional-probability
+- exercise-problems
+- probability
+- mathematics
+---
+
+Let $F$ be the event that ‘there is at least one tail’ and $E$ be the event ‘the die shows a number greater than 4’. Then
+$F = \{(H,T), (T,1), (T,2), (T,3), (T,4), (T,5), (T,6)\}$
+$E = \{(T,5), (T,6)\}$ and $E \cap F = \{(T,5), (T,6)\}$
+Now $P(F) = P(\{(H,T)\}) + P(\{(T,1)\}) + P(\{(T,2)\}) + P(\{(T,3)\}) + P(\{(T,4)\}) + P(\{(T,5)\}) + P(\{(T,6)\})$
+$= \frac{1}{4} + \frac{1}{12} + \frac{1}{12} + \frac{1}{12} + \frac{1}{12} + \frac{1}{12} + \frac{1}{12} = \frac{3}{4}$
+and $P(E \cap F) = P(\{(T,5)\}) + P(\{(T,6)\}) = \frac{1}{12} + \frac{1}{12} = \frac{1}{6}$
+Hence $P(E|F) = \frac{P(E \cap F)}{P(F)} = \frac{1/6}{3/4} = \frac{2}{9}$
+
+### EXERCISE 13.1
+1. Given that $E$ and $F$ are events such that $P(E) = 0.6$, $P(F) = 0.3$ and $P(E \cap F) = 0.2$, find $P(E|F)$ and $P(F|E)$.
+2. Compute $P(A|B)$, if $P(B) = 0.5$ and $P(A \cap B) = 0.32$.
+3. If $P(A) = 0.8$, $P(B) = 0.5$ and $P(B|A) = 0.4$, find
+(i) $P(A \cap B)$ (ii) $P(A|B)$ (iii) $P(A \cup B)$
+4. Evaluate $P(A \cup B)$, if $2P(A) = P(B) = \frac{5}{13}$ and $P(A|B) = \frac{2}{5}$.
+5. If $P(A) = \frac{6}{11}$, $P(B) = \frac{5}{11}$ and $P(A \cup B) = \frac{7}{11}$, find
+(i) $P(A \cap B)$ (ii) $P(A|B)$ (iii) $P(B|A)$
+
+Determine $P(E|F)$ in Exercises 6 to 9.
+6. A coin is tossed three times, where
+(i) $E$: head on third toss, $F$: heads on first two tosses
+(ii) $E$: at least two heads, $F$: at most two heads
+(iii) $E$: at most two tails, $F$: at least one tail

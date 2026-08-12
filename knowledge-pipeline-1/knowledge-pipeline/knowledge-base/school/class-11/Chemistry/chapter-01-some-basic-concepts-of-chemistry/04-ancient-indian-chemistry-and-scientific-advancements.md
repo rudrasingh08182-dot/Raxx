@@ -1,0 +1,21 @@
+---
+type: concept
+title: Ancient Indian Chemistry and Scientific Advancements
+category: school
+subject: Chemistry
+level: class-11
+chapter: 1
+chapter_name: SOME BASIC CONCEPTS OF CHEMISTRY
+content_type: concept
+tags:
+- metallurgy
+- scientific-heritage
+- SOME BASIC CONCEPTS OF CHEMISTRY
+- ancient-india
+- class12
+- history-of-chemistry
+- Chemistry
+- rasashastra
+---
+
+Copper utensils, iron, gold, silver ornaments and terracotta discs and painted grey pottery have been found in many archaeological sites in north India. Sushruta Samhita explains the importance of Alkalies. The Charaka Samhita mentions ancient Indians who knew how to prepare sulphuric acid, nitric acid and oxides of copper, tin and zinc; the sulphates of copper, zinc and iron and the carbonates of lead and iron. Rasopanishada describes the preparation of gunpowder mixture. Tamil texts also describe the preparation of fireworks using sulphur, charcoal, saltpetre (i.e., potassium nitrate), mercury, camphor, etc. Nagarjuna was a great Indian scientist. He was a reputed chemist, an alchemist and a metallurgist. His work Rasratnakar deals with the formulation of mercury compounds. He has also discussed methods for the extraction of metals, like gold, silver, tin and copper. A book, Rasarnavam, appeared around 800 CE. It discusses the uses of various furnaces, ovens and crucibles for different purposes. It describes methods by which metals could be identified by flame colour. Chakrapani discovered mercury sulphide. The credit for inventing soap also goes to him. He used mustard oil and some alkalies as ingredients for making soap. Indians began making soaps in the 18th century CE. Oil of Eranda and seeds of Mahua plant and calcium carbonate were used for making soap. The paintings found on the walls of Ajanta and Ellora, which look fresh even after ages, testify to a high level of science achieved in ancient India. Varahamihira’s Brihat Samhita is a sort of encyclopaedia, which was composed in the sixth century CE. It informs about the preparation of glutinous material to be applied on walls and roofs of houses and temples. It was prepared entirely from extracts of various plants, fruits, seeds and barks, which were concentrated by boiling, and then, treated with various resins. It will be interesting to test such materials scientifically and assess them for use.

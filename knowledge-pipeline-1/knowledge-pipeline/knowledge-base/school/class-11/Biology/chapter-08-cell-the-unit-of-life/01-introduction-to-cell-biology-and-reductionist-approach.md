@@ -1,0 +1,31 @@
+---
+type: concept
+title: Introduction to Cell Biology and Reductionist Approach
+category: school
+subject: Biology
+level: class-11
+chapter: 8
+chapter_name: CELL THE UNIT OF LIFE
+content_type: concept
+tags:
+- CELL THE UNIT OF LIFE
+- biomolecules
+- physiological-processes
+- cell-biology
+- reductionist-biology
+- cellular-organisation
+- Biology
+- class12
+---
+
+UNIT 3
+
+Biology is the study of living organisms. The detailed description of their form and appearance only brought out their diversity. It is the cell theory that emphasised the unity underlying this diversity of forms, i.e., the cellular organisation of all life forms. A description of cell structure and cell growth by division is given in the chapters comprising this unit. Cell theory also created a sense of mystery around living phenomena, i.e., physiological and behavioural processes. This mystery was the requirement of integrity of cellular organisation for living phenomena to be demonstrated or observed. In studying and understanding the physiological and behavioural processes, one can take a physico-chemical approach and use cell-free systems to investigate. This approach enables us to describe the various processes in molecular terms. The approach is established by analysis of living tissues for elements and compounds. It will tell us what types of organic compounds are present in living organisms. In the next stage, one can ask the question: What are these compounds doing inside a cell? And, in what way they carry out gross physiological processes like digestion, excretion, memory, defense, recognition, etc. In other words we answer the question, what is the molecular basis of all physiological processes? It can also explain the abnormal processes that occur during any diseased condition. This physico-chemical approach to study and understand living organisms is called ‘Reductionist Biology’. The concepts and techniques of physics and chemistry are applied to understand biology. In Chapter 9 of this unit, a brief description of biomolecules is provided.
+
+CELL: STRUCTURE AND FUNCTIONS
+
+Chapter 8: Cell: The Unit of Life
+Chapter 9: Biomolecules
+Chapter 10: Cell Cycle and Cell Division
+
+Reprint 2026-27

@@ -1,0 +1,34 @@
+---
+type: concept
+title: Introduction and Goals of the Human Genome Project
+category: school
+subject: biology
+level: class-12
+chapter: 6
+chapter_name: Molecular-Basis-of-Inheritance
+content_type: concept
+tags:
+- biology
+- class12
+- human-genome-project
+- molecular-biology
+- Molecular-Basis-of-Inheritance
+- bioinformatics
+- dna-sequencing
+- genetics
+---
+
+118 BIOLOGY 6.9 HUMAN GENOME PROJECT
+
+In the preceding sections you have learnt that it is the sequence of bases in DNA that determines the genetic information of a given organism. In other words, genetic make-up of an organism or an individual lies in the DNA sequences. If two individuals differ, then their DNA sequences should also be different, at least at some places. These assumptions led to the quest of finding out the complete DNA sequence of human genome. With the establishment of genetic engineering techniques where it was possible to isolate and clone any piece of DNA and availability of simple and fast techniques for determining DNA sequences, a very ambitious project of sequencing human genome was launched in the year 1990. Human Genome Project (HGP) was called a mega project. You can imagine the magnitude and the requirements for the project if we simply define the aims of the project as follows:
+
+Human genome is said to have approximately $3 \times 10^9$ bp, and if the cost of sequencing required is US $3 per bp (the estimated cost in the beginning), the total estimated cost of the project would be approximately 9 billion US dollars. Further, if the obtained sequences were to be stored in typed form in books, and if each page of the book contained 1000 letters and each book contained 1000 pages, then 3300 such books would be required to store the information of DNA sequence from a single human cell. The enormous amount of data expected to be generated also necessitated the use of high speed computational devices for data storage and retrieval, and analysis. HGP was closely associated with the rapid development of a new area in biology called Bioinformatics.
+
+Goals of HGP
+Some of the important goals of HGP were as follows:
+(i) Identify all the approximately 20,000-25,000 genes in human DNA;
+(ii) Determine the sequences of the 3 billion chemical base pairs that make up human DNA;
+(iii) Store this information in databases;
+(iv) Improve tools for data analysis;
+(v) Transfer related technologies to other sectors, such as industries;
+(vi) Address the ethical, legal, and social issues (ELSI) that may arise from the project.

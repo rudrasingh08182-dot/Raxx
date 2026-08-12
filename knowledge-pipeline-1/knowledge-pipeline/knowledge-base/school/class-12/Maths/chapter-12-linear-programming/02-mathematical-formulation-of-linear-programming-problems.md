@@ -1,0 +1,47 @@
+---
+type: concept
+title: Mathematical Formulation of Linear Programming Problems
+category: school
+subject: Maths
+level: class-12
+chapter: 12
+chapter_name: LINEAR PROGRAMMING
+content_type: concept
+tags:
+- class12
+- LINEAR PROGRAMMING
+- optimization
+- Maths
+- linear-programming
+- constraints
+- algebra
+- mathematical-formulation
+---
+
+### 12.2 Linear Programming Problem and its Mathematical Formulation
+
+We begin our discussion with the above example of a furniture dealer which will further lead to a mathematical formulation of the problem in two variables. In this example, we observe:
+
+(i) The dealer can invest his money in buying tables or chairs or a combination thereof. Further, he would earn different profits by following different investment strategies.
+(ii) There are certain overriding conditions or constraints, viz., his investment is limited to a maximum of Rs 50,000 and so is his storage space which is for a maximum of 60 pieces.
+
+Suppose he decides to buy tables only and no chairs, so he can buy $50000 \div 2500$, i.e., 20 tables. His profit in this case will be Rs $(250 \times 20)$, i.e., Rs 5000.
+
+Suppose he chooses to buy chairs only and no tables. With his capital of Rs 50,000, he can buy $50000 \div 500$, i.e., 100 chairs. But he can store only 60 pieces. Therefore, he is forced to buy only 60 chairs which will give him a total profit of Rs $(60 \times 75)$, i.e., Rs 4500.
+
+There are many other possibilities, for instance, he may choose to buy 10 tables and 50 chairs, as he can store only 60 pieces. Total profit in this case would be Rs $(10 \times 250 + 50 \times 75)$, i.e., Rs 6250 and so on.
+
+We, thus, find that the dealer can invest his money in different ways and he would earn different profits by following different investment strategies. Now the problem is: How should he invest his money in order to get maximum profit? To answer this question, let us try to formulate the problem mathematically.
+
+#### 12.2.1 Mathematical formulation of the problem
+
+Let $x$ be the number of tables and $y$ be the number of chairs that the dealer buys. Obviously, $x$ and $y$ must be non-negative, i.e.,
+
+$x \ge 0$ ... (1) (Non-negative constraints)
+$y \ge 0$ ... (2)
+
+The dealer is constrained by the maximum amount he can invest (Here it is Rs 50,000) and by the maximum number of items he can store (Here it is 60). Stated mathematically,
+
+$2500x + 500y \le 50000$ (investment constraint)
+or $5x + y \le 100$ ... (3)
+and $x + y \le 60$ (storage constraint) ... (4)

@@ -1,0 +1,11 @@
+pdfplumber
+pytesseract
+pdf2image
+google-generativeai
+supabase
+python-frontmatter
+pyyaml
+tiktoken
+anthropic
+fastapi
+uvicorn

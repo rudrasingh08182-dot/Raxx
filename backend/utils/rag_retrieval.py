@@ -8,18 +8,17 @@
 # which previously broke the Render build (dependency conflicts) — this REST
 # call needs only `requests`, already in requirements.txt. No new heavy deps.
 #
-# Must use the SAME embedding model as the offline ingestion pipeline
-# (text-embedding-004) — otherwise similarity search breaks.
-#
-# Uses the same SUPABASE_URL / SUPABASE_ANON_KEY already in .env — no new
-# service key needed on the live backend (knowledge_chunks is public content,
-# not per-student data).
+# Model: gemini-embedding-001 (text-embedding-004 was shut down by Google on
+# Jan 14, 2026). output_dimensionality is set to 768 to match the Supabase
+# schema (VECTOR(768)) and must be IDENTICAL to whatever the offline ingestion
+# pipeline used when embedding the stored chunks — otherwise similarity search
+# breaks (different vector spaces).
 
 import os
 import requests
-from supabase import create_client
 
-GEMINI_EMBED_URL = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent"
+GEMINI_EMBED_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent"
+EMBED_DIMENSIONS = 768  # must match the dimension used during ingestion + the Supabase column
 
 _supabase = None
 
@@ -27,6 +26,7 @@ _supabase = None
 def _get_supabase():
     global _supabase
     if _supabase is None:
+        from supabase import create_client
         _supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_ANON_KEY"))
     return _supabase
 
@@ -41,7 +41,11 @@ def get_query_embedding(text: str):
         response = requests.post(
             GEMINI_EMBED_URL,
             params={"key": api_key},
-            json={"content": {"parts": [{"text": text}]}},
+            json={
+                "content": {"parts": [{"text": text}]},
+                "outputDimensionality": EMBED_DIMENSIONS,
+                "taskType": "RETRIEVAL_QUERY",
+            },
             timeout=10,
         )
         response.raise_for_status()
