@@ -18,8 +18,8 @@ router = APIRouter()
 # ── Models ──────────────────────────────────────
 class RegisterUser(BaseModel):
     name: str
-    email: EmailStr
-    password:Annotated[str,Field(min_length=8,max_length=20)]
+    email: str
+    password:str
     role: str        # student / teacher / parent
     whatsapp: str
     parent_whatsapp: str = ""
