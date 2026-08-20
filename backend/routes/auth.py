@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel,EmailStr,Field
+from typing import Annotated
 from supabase import create_client
 import os, random, string
 from dotenv import load_dotenv
@@ -17,8 +18,8 @@ router = APIRouter()
 # ── Models ──────────────────────────────────────
 class RegisterUser(BaseModel):
     name: str
-    email: str
-    password: str
+    email: EmailStr
+    password:Annotated[str,Field(min_length=8,max_length=20)]
     role: str        # student / teacher / parent
     whatsapp: str
     parent_whatsapp: str = ""
@@ -27,8 +28,8 @@ class RegisterUser(BaseModel):
     language: str = "hindi"
 
 class LoginUser(BaseModel):
-    email: str
-    password: str
+    email: EmailStr
+    password: Annotated[str,Field(min_length=8,max_length=20)]
 
 # ── Helper: Generate unique student code ────────
 def generate_student_code():
