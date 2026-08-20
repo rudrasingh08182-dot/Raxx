@@ -28,8 +28,8 @@ class RegisterUser(BaseModel):
     language: str = "hindi"
 
 class LoginUser(BaseModel):
-    email: EmailStr
-    password: Annotated[str,Field(min_length=8,max_length=20)]
+    email: str
+    password: str
 
 # ── Helper: Generate unique student code ────────
 def generate_student_code():
