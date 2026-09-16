@@ -83,6 +83,7 @@ Respond ONLY in this exact JSON format, no extra text:
     except HTTPException:
         raise
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback, sys
+        traceback.print_exc(file=sys.stderr)
+        sys.stderr.flush()
+        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {str(e)}")
