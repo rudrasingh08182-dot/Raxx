@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import List, Optional
 from utils.gemini_helper import ask_raxx_ai
-import anthropic
+from openai import OpenAI
 import os
 import json
 import uuid
@@ -21,7 +21,11 @@ from reportlab.lib.enums import TA_LEFT, TA_CENTER
 router = APIRouter()
 
 # Direct client — sirf resume generate ke liye (PDF generation ke saath)
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+client = OpenAI(
+    base_url=os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1"),
+    api_key=os.getenv("NVIDIA_API_KEY"),
+)
+MODEL_NAME = "nvidia/nemotron-3.5-lightning-30b-a3b"
 
 # ═══════════════════════════════════════
 # MODELS
@@ -79,7 +83,7 @@ class ResumeChatData(BaseModel):
     resume_data: dict
 
 # ═══════════════════════════════════════
-# RESUME GENERATOR — Direct Claude (PDF generation ke saath)
+# RESUME GENERATOR — Direct Nemotron (PDF generation ke saath)
 # ═══════════════════════════════════════
 
 @router.post("/resume-generate")
@@ -110,13 +114,16 @@ Return ONLY this JSON (no extra text):
 }}
 """
         # Resume ke liye direct client (PDF bhi generate karna hai saath mein)
-        response = client.messages.create(
-            model="claude-sonnet-4-6",
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
             max_tokens=1500,
+            temperature=0.3,
+            frequency_penalty=0.3,
+            extra_body={"chat_template_kwargs": {"enable_thinking": False}},
             messages=[{"role": "user", "content": prompt}]
         )
 
-        raw = response.content[0].text.strip()
+        raw = response.choices[0].message.content.strip()
         raw = raw.replace("```json", "").replace("```", "").strip()
         optimized = json.loads(raw)
 

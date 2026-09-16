@@ -1,14 +1,21 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from utils.gemini_helper import ask_raxx_ai
-import anthropic
+from openai import OpenAI
 import os
 import json
 
 router = APIRouter()
 
 # Image evaluation ke liye direct client zaroori hai (vision feature)
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+client = OpenAI(
+    base_url=os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1"),
+    api_key=os.getenv("NVIDIA_API_KEY"),
+)
+
+# Omni-modal model — image, video, speech, text sab samajhta hai. Handwritten
+# answer image evaluate karne ke liye ye use ho raha hai.
+VISION_MODEL_NAME = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
 
 class AnswerImageRequest(BaseModel):
     user_id: str
@@ -24,23 +31,23 @@ class QuestionRequest(BaseModel):
     exam_type: str
     subject: str
 
-# ── Image Evaluation — Direct Claude (Vision) — Caching possible nahi ──
+# ── Image Evaluation — Direct NVIDIA (Vision) — Caching possible nahi ──
 @router.post("/answer/evaluate-image")
 async def evaluate_answer_image(req: AnswerImageRequest):
     try:
-        message = client.messages.create(
-            model="claude-sonnet-4-6",
+        # OpenAI-compatible vision format: image as a data URI inside image_url
+        data_uri = f"data:{req.media_type};base64,{req.image_base64}"
+
+        completion = client.chat.completions.create(
+            model=VISION_MODEL_NAME,
             max_tokens=1500,
+            temperature=0.3,
             messages=[{
                 "role": "user",
                 "content": [
                     {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": req.media_type,
-                            "data": req.image_base64,
-                        }
+                        "type": "image_url",
+                        "image_url": {"url": data_uri}
                     },
                     {
                         "type": "text",
@@ -75,7 +82,7 @@ Respond in JSON format only:
             }]
         )
 
-        text = message.content[0].text
+        text = completion.choices[0].message.content
         text = text.replace("```json", "").replace("```", "").strip()
         result = json.loads(text)
 
@@ -87,7 +94,7 @@ Respond in JSON format only:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── Questions Generate — gemini_helper se (caching automatic!) ──
+# ── Questions Generate — gemini_helper se (already NVIDIA, unaffected) ──
 @router.post("/answer/questions")
 async def get_questions(req: QuestionRequest):
     try:

@@ -143,22 +143,19 @@ def ask_raxx_ai(
         client = get_nvidia_client()
 
         response = client.chat.completions.create(
-            model=MODEL_NAME,
-            max_tokens=4000,
-            # Low temperature keeps answers closer to the RAG reference
-            # material instead of drifting toward the model's own knowledge.
-            temperature=0.3,
-            messages=[
-                {
-                    "role": "system",
-                    "content": RAXX_SYSTEM_PROMPT,
-                },
-                {
-                    "role": "user",
-                    "content": full_prompt,
-                },
-            ],
-        )
+    model=MODEL_NAME,
+    max_tokens=3000,          # 1500 se badhaya — reasoning + answer dono ke liye jagah
+    temperature=0.3,
+    frequency_penalty=0.4,    # repetition rokta hai — ye add karna sabse zaroori hai
+    presence_penalty=0.2,
+    extra_body={
+        "chat_template_kwargs": {"enable_thinking": False}  # thinking OFF — seedha clean answer
+    },
+    messages=[
+        {"role": "system", "content": RAXX_SYSTEM_PROMPT},
+        {"role": "user", "content": full_prompt},
+    ],
+)
 
         choice = response.choices[0]
         answer = choice.message.content
