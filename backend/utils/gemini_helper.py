@@ -21,6 +21,11 @@ def get_nvidia_client():
 # Update this if NVIDIA renames/updates the model string later
 MODEL_NAME = "nvidia/nemotron-3.5-lightning-30b-a3b"
 
+# Ye features strict JSON return karte hain — inke liye Nemotron ka lamba
+# chain-of-thought reasoning off kar dete hain (/no_think), warna model
+# JSON likhne se pehle hi apni "thinking" me max_tokens khatam kar deta hai
+JSON_FEATURES = {"mocktest", "career"}
+
 RAXX_SYSTEM_PROMPT = """
 You are RAXX AI, India's smartest AI study assistant — built for every Indian student
 from Class 6 to competitive exams (JEE, NEET, UPSC, SSC, Railway).
@@ -177,17 +182,23 @@ def ask_raxx_ai(
 
     full_prompt = f"{SYLLABUS_CONTEXT}\n\n{feature_instruction}{rag_context}\n\nStudent Question: {question}"
 
+    system_prompt = RAXX_SYSTEM_PROMPT
+    max_out_tokens = 4000
+    if feature in JSON_FEATURES:
+        system_prompt = "/no_think\n" + RAXX_SYSTEM_PROMPT
+        max_out_tokens = 6000
+
     try:
         client = get_nvidia_client()
 
         response = client.chat.completions.create(
             model=MODEL_NAME,
-            max_tokens=4000,          # thinking + answer dono ke liye jagah
+            max_tokens=max_out_tokens,
             temperature=0.4,
             frequency_penalty=0.4,    # repetition rokta hai
             presence_penalty=0.2,
             messages=[
-                {"role": "system", "content": RAXX_SYSTEM_PROMPT},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": full_prompt},
             ],
         )
@@ -199,6 +210,14 @@ def ask_raxx_ai(
         # unko final answer se clean kar do
         if answer:
             answer = re.sub(r'<think>.*?</think>', '', answer, flags=re.DOTALL).strip()
+            # Agar <think> abhi bhi bacha hai matlab wo band hi nahi hua tha
+            # (max_tokens beech me hi truncate ho gaya) — aisa reasoning-garbage
+            # answer ke bajaye clean error dena behtar hai
+            if '<think>' in answer:
+                return {
+                    "success": False,
+                    "error": "Model response truncated during reasoning. Try again or increase max_tokens.",
+                }
 
         # Some Nemotron variants return separate "reasoning_content" (chain of
         # thought). We deliberately drop it here — students should only see
