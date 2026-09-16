@@ -182,11 +182,14 @@ def ask_raxx_ai(
 
     full_prompt = f"{SYLLABUS_CONTEXT}\n\n{feature_instruction}{rag_context}\n\nStudent Question: {question}"
 
-    system_prompt = RAXX_SYSTEM_PROMPT
     max_out_tokens = 4000
+    extra_body = {}
     if feature in JSON_FEATURES:
-        system_prompt = "/no_think\n" + RAXX_SYSTEM_PROMPT
-        max_out_tokens = 6000
+        # enable_thinking=False se reasoning off honi chahiye, lekin agar NIM
+        # endpoint ye parameter ignore kar de to bhi itna max_tokens rakha hai
+        # ki reasoning + JSON answer dono fit ho jaayein
+        max_out_tokens = 14000
+        extra_body = {"chat_template_kwargs": {"enable_thinking": False}}
 
     try:
         client = get_nvidia_client()
@@ -197,8 +200,9 @@ def ask_raxx_ai(
             temperature=0.4,
             frequency_penalty=0.4,    # repetition rokta hai
             presence_penalty=0.2,
+            extra_body=extra_body,
             messages=[
-                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": RAXX_SYSTEM_PROMPT},
                 {"role": "user", "content": full_prompt},
             ],
         )
