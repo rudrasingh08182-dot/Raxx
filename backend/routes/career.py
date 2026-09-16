@@ -78,8 +78,11 @@ Respond ONLY in this exact JSON format, no extra text:
             "tokens_used": result["tokens_used"],
         }
 
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="AI response parse error. Try again.")
+    except json.JSONDecodeError as e:
+        import sys
+        print(f"JSON PARSE FAILED. Raw AI response was:\n{raw!r}", file=sys.stderr)
+        sys.stderr.flush()
+        raise HTTPException(status_code=500, detail=f"AI response parse error: {str(e)}")
     except HTTPException:
         raise
     except Exception as e:
