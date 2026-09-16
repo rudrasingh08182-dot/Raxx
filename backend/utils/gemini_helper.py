@@ -1,22 +1,24 @@
 # backend/utils/gemini_helper.py
-# RAXX AI — Central AI Helper via Anthropic API (Claude)
+# RAXX AI — Central AI Helper via NVIDIA NIM API (Nemotron 3.5)
 # Now RAG-aware for the "doubt" feature: retrieves relevant chunks from the
-# knowledge base (built by the knowledge-pipeline tool) and grounds Claude's
-# answer in them when available. Falls back to answering without retrieval
-# if nothing is found yet (e.g. before any content has been ingested) —
-# this never breaks the feature, it just doesn't get grounded until content exists.
+# knowledge base (built by the knowledge-pipeline tool) and grounds the
+# model's answer in them when available. Falls back to answering without
+# retrieval if nothing is found yet (e.g. before any content has been
+# ingested) — this never breaks the feature, it just doesn't get grounded
+# until content exists.
 
-import anthropic
 import os
+from openai import OpenAI
 from utils.rag_retrieval import search_knowledge
 
-def get_anthropic_client():
-    return anthropic.Anthropic(
-        api_key=os.getenv("ANTHROPIC_API_KEY"),
+def get_nvidia_client():
+    return OpenAI(
+        base_url=os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1"),
+        api_key=os.getenv("NVIDIA_API_KEY"),
     )
 
-# Update this if Anthropic renames/updates the model string later
-MODEL_NAME = "claude-sonnet-5"
+# Update this if NVIDIA renames/updates the model string later
+MODEL_NAME = "nvidia/nemotron-3.5-lightning-30b-a3b"
 
 RAXX_SYSTEM_PROMPT = """
 You are RAXX AI, India's smartest AI study assistant built for every Indian student.
@@ -34,6 +36,12 @@ Your Rules:
   answer on it and mention the source (e.g. "Source: NCERT Class 10 Maths, Real Numbers").
   If the reference material doesn't cover the question, answer from your own
   knowledge as usual, without claiming a source.
+- IMPORTANT: When REFERENCE MATERIAL is present, prioritize it over your own
+  training knowledge. Do not contradict or ignore it. If it fully answers the
+  question, base your entire answer on it.
+- If the student's message is just a casual greeting or small talk (not an
+  academic question), reply warmly and briefly, then ask what topic they
+  need help with. Don't force step-by-step academic structure on it.
 """
 
 SYLLABUS_CONTEXT = """
@@ -132,35 +140,44 @@ def ask_raxx_ai(
     full_prompt = f"{SYLLABUS_CONTEXT}\n\n{feature_instruction}{rag_context}\n\nStudent Question: {question}"
 
     try:
-        client = get_anthropic_client()
+        client = get_nvidia_client()
 
-        response = client.messages.create(
+        response = client.chat.completions.create(
             model=MODEL_NAME,
             max_tokens=1500,
-            system=[
-                {
-                    "type": "text",
-                    "text": RAXX_SYSTEM_PROMPT,
-                    "cache_control": {"type": "ephemeral"},
-                }
-            ],
+            # Low temperature keeps answers closer to the RAG reference
+            # material instead of drifting toward the model's own knowledge.
+            temperature=0.3,
             messages=[
                 {
+                    "role": "system",
+                    "content": RAXX_SYSTEM_PROMPT,
+                },
+                {
                     "role": "user",
-                    "content": full_prompt
-                }
-            ]
+                    "content": full_prompt,
+                },
+            ],
         )
 
-        answer = response.content[0].text
+        choice = response.choices[0]
+        answer = choice.message.content
+
+        # Some Nemotron variants return separate "reasoning_content" (chain of
+        # thought). We deliberately drop it here — students should only see
+        # the final answer, never the model's internal reasoning trace.
+        # If you ever need it for debugging, it's at:
+        #   getattr(choice.message, "reasoning_content", None)
 
         usage = response.usage
         return {
             "success": True,
             "answer": answer,
-            "tokens_used": usage.input_tokens + usage.output_tokens,
-            "cache_created": getattr(usage, "cache_creation_input_tokens", 0) or 0,
-            "cache_read": getattr(usage, "cache_read_input_tokens", 0) or 0,
+            "tokens_used": usage.total_tokens if usage else 0,
+            # NVIDIA NIM doesn't expose prompt-cache stats like Anthropic did,
+            # so these stay at 0. Safe to remove downstream if unused.
+            "cache_created": 0,
+            "cache_read": 0,
             "grounded": bool(rag_context),
         }
 
