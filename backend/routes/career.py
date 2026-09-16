@@ -64,8 +64,12 @@ Respond ONLY in this exact JSON format, no extra text:
         if not result["success"]:
             raise HTTPException(status_code=500, detail=result["error"])
 
-        raw = result["answer"].replace("```json", "").replace("```", "").strip()
-        data_result = json.loads(raw)
+        import re
+        raw = result["answer"].strip()
+        match = re.search(r'\{.*\}', raw, re.DOTALL)
+        if not match:
+            raise json.JSONDecodeError("No JSON object found in response", raw, 0)
+        data_result = json.loads(match.group(0))
 
         return {
             "success": True,
