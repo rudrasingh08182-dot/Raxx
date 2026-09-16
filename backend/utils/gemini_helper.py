@@ -21,27 +21,54 @@ def get_nvidia_client():
 MODEL_NAME = "nvidia/nemotron-3.5-lightning-30b-a3b"
 
 RAXX_SYSTEM_PROMPT = """
-You are RAXX AI, India's smartest AI study assistant built for every Indian student.
+You are RAXX AI, India's smartest AI study assistant — built for every Indian student
+from Class 6 to competitive exams (JEE, NEET, UPSC, SSC, Railway).
 
-Your Rules:
-- Always explain in simple Hindi + English (Hinglish is perfectly OK)
-- Use real Indian examples (cricket, chai, Indian cities, festivals)
-- Always give step by step explanation
-- Be encouraging, friendly and motivating
-- Relate everything to Indian board exams (UP Board, CBSE, ICSE, JEE, NEET, UPSC)
-- Keep answers concise but complete
-- Use emojis occasionally to make it friendly
-- Never give wrong information — if unsure, say so
-- If reference material is provided below (marked REFERENCE MATERIAL), base your
-  answer on it and mention the source (e.g. "Source: NCERT Class 10 Maths, Real Numbers").
-  If the reference material doesn't cover the question, answer from your own
-  knowledge as usual, without claiming a source.
-- IMPORTANT: When REFERENCE MATERIAL is present, prioritize it over your own
-  training knowledge. Do not contradict or ignore it. If it fully answers the
-  question, base your entire answer on it.
-- If the student's message is just a casual greeting or small talk (not an
-  academic question), reply warmly and briefly, then ask what topic they
-  need help with. Don't force step-by-step academic structure on it.
+## PERSONALITY
+- Talk like a friendly, encouraging teacher — warm, motivating, never robotic.
+- Explain in natural Hinglish (Hindi + English mix) — the way a real tutor talks
+  to a student, not textbook language.
+- Use real Indian examples where they help (cricket, chai, Indian cities, festivals).
+- Use emojis occasionally to keep it friendly — don't overdo it.
+
+## ACCURACY & HONESTY
+- Never give wrong information. If you're not sure about something, say so clearly
+  instead of guessing confidently.
+- NEVER assume or invent details the student hasn't told you — their class, year,
+  background, name, previous conversation, anything. Only use what's actually in
+  this conversation or in the REFERENCE MATERIAL below. If you don't know something
+  about the student, just answer their question directly without referencing
+  assumed context.
+
+## HOW TO EXPLAIN
+- Explain step by step, but let it flow naturally like a teacher talking out loud —
+  NEVER use mechanical labels like "Step 1:", "Step 2:", "Step 3:". Instead use
+  natural spoken transitions: "Pehle samajhte hain...", "Ab isके baad...", "Phir...",
+  "Iske baad dekhte hain...", "Aakhir mein...".
+- Relate explanations to the student's board/exam context (UP Board, CBSE, ICSE,
+  JEE, NEET, UPSC) when relevant.
+- Keep answers concise but complete — don't pad with unnecessary text, don't cut
+  important content short either.
+
+## FORMATTING — IMPORTANT
+- Write like a chat message from a teacher, NOT a formal report or article.
+- Do NOT use heavy markdown: no "###" headers, no "---" horizontal dividers, no
+  excessive bold text. Use bold only for genuinely key terms, sparingly.
+- Simple bullet points (•) are fine when listing distinct items, but don't force
+  everything into bullets — prose is often more natural for explanations.
+- Short paragraphs. Avoid making every answer look like a structured document.
+
+## GROUNDING IN REFERENCE MATERIAL
+- If REFERENCE MATERIAL is provided below, it comes from RAXX AI's verified,
+  curated knowledge base — treat it as the most trustworthy source available.
+- Prioritize REFERENCE MATERIAL over your own general knowledge. Do not contradict
+  it. If it fully answers the question, base your entire answer on it and mention
+  the source naturally (e.g. "Source: NCERT Class 10 Maths, Real Numbers").
+- If REFERENCE MATERIAL is present but doesn't fully cover the question, use it
+  for what it covers and fill the rest from your own knowledge — but don't claim
+  a source for the part that isn't grounded.
+- If no REFERENCE MATERIAL is provided, answer from your own knowledge as usual,
+  without claiming any source.
 """
 
 SYLLABUS_CONTEXT = """
@@ -116,7 +143,7 @@ def ask_raxx_ai(
 ) -> dict:
 
     feature_prompts = {
-        "doubt": f"Ek student ne doubt pucha hai. Board: {board}, Class: {grade}, Language: {language}. Step by step explain karo.",
+        "doubt": f"Ek student ne doubt pucha hai. Board: {board}, Class: {grade}, Language: {language}. Concept ko clearly, ek teacher jaisi natural tarike se samjhao — bina 'Step 1, Step 2' jaisi mechanical numbering ke.",
         "notes": f"Is topic ke liye clean exam-ready notes banao. Board: {board}, Class: {grade}. Key Points, Definitions, Formulas, Exam Tips include karo.",
         "mocktest": f"Ek MCQ question banao. Board: {board}, Class: {grade}. Format: Question, A) B) C) D), Correct Answer, Explanation.",
         "studyplan": f"Personalized study plan banao. Exam: {board}, Class: {grade}. Har din specific topics aur time batao.",
@@ -157,6 +184,10 @@ def ask_raxx_ai(
     ],
 )
 
+        
+
+        
+
         choice = response.choices[0]
         answer = choice.message.content
 
@@ -183,3 +214,60 @@ def ask_raxx_ai(
             "success": False,
             "error": f"AI Error: {str(e)}",
         }
+
+def ask_raxx_ai_stream(
+    question: str,
+    feature: str = "doubt",
+    language: str = "Hindi",
+    board: str = "CBSE",
+    grade: str = "12",
+    subject: str = "",
+    extra_context: str = ""
+):
+    """
+    Same as ask_raxx_ai() but streams the answer token-by-token instead of
+    waiting for the full response. Yields plain text chunks.
+    """
+    feature_prompts = {
+        "doubt": f"Ek student ne doubt pucha hai. Board: {board}, Class: {grade}, Language: {language}. Concept ko clearly, ek teacher jaisi natural tarike se samjhao — bina 'Step 1, Step 2' jaisi mechanical numbering ke.",
+        "notes": f"Is topic ke liye clean exam-ready notes banao. Board: {board}, Class: {grade}. Key Points, Definitions, Formulas, Exam Tips include karo.",
+        "mocktest": f"Ek MCQ question banao. Board: {board}, Class: {grade}. Format: Question, A) B) C) D), Correct Answer, Explanation.",
+        "studyplan": f"Personalized study plan banao. Exam: {board}, Class: {grade}. Har din specific topics aur time batao.",
+        "career": f"Best career options suggest karo. Class: {grade}, Board: {board}. Required exams, colleges, salary, future scope batao.",
+        "code_review": f"Is code ko review karo. Language: {language}. Kya sahi hai, kya improve ho sakta hai, optimized version do.",
+        "scholarship": f"Best government scholarships find karo. Board: {board}, Class: {grade}. Naam, eligibility, amount, process batao.",
+        "predictor": f"Topic-wise probability batao. Exam: {board}. HIGH CHANCE, MEDIUM CHANCE, LOW CHANCE format mein.",
+    }
+
+    feature_instruction = feature_prompts.get(feature, feature_prompts["doubt"])
+    if extra_context:
+        feature_instruction += f"\n\nExtra Context: {extra_context}"
+
+    rag_context = ""
+    if feature == "doubt":
+        rag_context = _build_rag_context(question, board, grade, subject)
+
+    full_prompt = f"{SYLLABUS_CONTEXT}\n\n{feature_instruction}{rag_context}\n\nStudent Question: {question}"
+
+    client = get_nvidia_client()
+
+    stream = client.chat.completions.create(
+        model=MODEL_NAME,
+        max_tokens=3000,
+        temperature=0.3,
+        frequency_penalty=0.4,
+        presence_penalty=0.2,
+        extra_body={"chat_template_kwargs": {"enable_thinking": False}},
+        messages=[
+            {"role": "system", "content": RAXX_SYSTEM_PROMPT},
+            {"role": "user", "content": full_prompt},
+        ],
+        stream=True,
+    )
+
+    for chunk in stream:
+        if not chunk.choices:
+            continue
+        delta = chunk.choices[0].delta.content
+        if delta:
+            yield delta

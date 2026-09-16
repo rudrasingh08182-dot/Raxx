@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from fastapi.responses import StreamingResponse
+from utils.gemini_helper import ask_raxx_ai, ask_raxx_ai_stream
 from utils.gemini_helper import ask_raxx_ai
 
 router = APIRouter()
@@ -48,3 +50,24 @@ def solve_doubt(doubt: DoubtRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/ask-stream")
+def solve_doubt_stream(doubt: DoubtRequest):
+    question = doubt.question
+    if doubt.subject:
+        question = f"Subject: {doubt.subject}\n\nDoubt: {doubt.question}"
+
+    def event_generator():
+        for chunk in ask_raxx_ai_stream(
+            question=question,
+            feature="doubt",
+            language=doubt.language,
+            board=doubt.board,
+            grade=doubt.grade,
+            subject=doubt.subject,
+        ):
+            yield chunk
+
+    return StreamingResponse(event_generator(), media_type="text/plain")
+    
