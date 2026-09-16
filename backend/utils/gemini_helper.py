@@ -8,6 +8,7 @@
 # until content exists.
 
 import os
+import re
 from openai import OpenAI
 from utils.rag_retrieval import search_knowledge
 
@@ -30,6 +31,11 @@ from Class 6 to competitive exams (JEE, NEET, UPSC, SSC, Railway).
   to a student, not textbook language.
 - Use real Indian examples where they help (cricket, chai, Indian cities, festivals).
 - Use emojis occasionally to keep it friendly — don't overdo it.
+- NEVER start your answer with a greeting like "Namaste", "Hello", "Hi", or any
+  opening line before getting to the actual content. Jump straight into answering
+  the question — no preamble, no greeting, no "great question!" filler. Start
+  directly with the explanation itself.
+
 
 ## ACCURACY & HONESTY
 - Never give wrong information. If you're not sure about something, say so clearly
@@ -170,26 +176,24 @@ def ask_raxx_ai(
         client = get_nvidia_client()
 
         response = client.chat.completions.create(
-    model=MODEL_NAME,
-    max_tokens=3000,          # 1500 se badhaya — reasoning + answer dono ke liye jagah
-    temperature=0.3,
-    frequency_penalty=0.4,    # repetition rokta hai — ye add karna sabse zaroori hai
-    presence_penalty=0.2,
-    extra_body={
-        "chat_template_kwargs": {"enable_thinking": False}  # thinking OFF — seedha clean answer
-    },
-    messages=[
-        {"role": "system", "content": RAXX_SYSTEM_PROMPT},
-        {"role": "user", "content": full_prompt},
-    ],
-)
-
-        
-
-        
+            model=MODEL_NAME,
+            max_tokens=4000,          # thinking + answer dono ke liye jagah
+            temperature=0.4,
+            frequency_penalty=0.4,    # repetition rokta hai
+            presence_penalty=0.2,
+            messages=[
+                {"role": "system", "content": RAXX_SYSTEM_PROMPT},
+                {"role": "user", "content": full_prompt},
+            ],
+        )
 
         choice = response.choices[0]
         answer = choice.message.content
+
+        # Agar model ne <think>...</think> tags content ke andar hi bhej diye,
+        # unko final answer se clean kar do
+        if answer:
+            answer = re.sub(r'<think>.*?</think>', '', answer, flags=re.DOTALL).strip()
 
         # Some Nemotron variants return separate "reasoning_content" (chain of
         # thought). We deliberately drop it here — students should only see
@@ -253,11 +257,10 @@ def ask_raxx_ai_stream(
 
     stream = client.chat.completions.create(
         model=MODEL_NAME,
-        max_tokens=3000,
-        temperature=0.3,
+        max_tokens=4000,
+        temperature=0.4,
         frequency_penalty=0.4,
         presence_penalty=0.2,
-        extra_body={"chat_template_kwargs": {"enable_thinking": False}},
         messages=[
             {"role": "system", "content": RAXX_SYSTEM_PROMPT},
             {"role": "user", "content": full_prompt},
@@ -265,9 +268,39 @@ def ask_raxx_ai_stream(
         stream=True,
     )
 
+    # Agar model beech-beech mein <think>...</think> bhejta hai, usko user
+    # tak pohochne se pehle hi filter kar do
+    buffer = ""
+    inside_think = False
+
     for chunk in stream:
         if not chunk.choices:
             continue
         delta = chunk.choices[0].delta.content
-        if delta:
-            yield delta
+        if not delta:
+            continue
+
+        buffer += delta
+
+        while True:
+            if inside_think:
+                end_idx = buffer.find("</think>")
+                if end_idx == -1:
+                    buffer = ""
+                    break
+                buffer = buffer[end_idx + len("</think>"):]
+                inside_think = False
+            else:
+                start_idx = buffer.find("<think>")
+                if start_idx == -1:
+                    if buffer:
+                        yield buffer
+                    buffer = ""
+                    break
+                if start_idx > 0:
+                    yield buffer[:start_idx]
+                buffer = buffer[start_idx + len("<think>"):]
+                inside_think = True
+
+    if buffer and not inside_think:
+        yield buffer
