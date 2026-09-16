@@ -38,65 +38,86 @@ export default function DoubtSolver() {
     }
   };
 
-  const askDoubt = async () => {
-    if (!question.trim() && !uploadedFile) return;
+ const askDoubt = async () => {
+  if (!question.trim() && !uploadedFile) return;
 
-    const userMessage = {
-      id: Date.now(),
-      type: "user",
-      content: question,
-      subject: subject !== "All Subjects" ? subject : "",
-      file: previewUrl,
-      fileName: uploadedFile?.name,
+  const userMessage = {
+    id: Date.now(),
+    type: "user",
+    content: question,
+    subject: subject !== "All Subjects" ? subject : "",
+    file: previewUrl,
+    fileName: uploadedFile?.name,
+    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  };
+
+  setMessages((prev) => [...prev, userMessage]);
+  setRecentDoubts((prev) =>
+    [{ question, subject, time: userMessage.time }, ...prev].slice(0, 10)
+  );
+
+  const currentQuestion = question;
+  setQuestion("");
+  setUploadedFile(null);
+  setPreviewUrl(null);
+  setLoading(true);
+
+  const aiMessageId = Date.now() + 1;
+  // Empty AI message pehle hi add kar do — usko stream update karega
+  setMessages((prev) => [
+    ...prev,
+    {
+      id: aiMessageId,
+      type: "ai",
+      content: "",
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    };
+    },
+  ]);
 
-    setMessages((prev) => [...prev, userMessage]);
-    setRecentDoubts((prev) =>
-      [{ question, subject, time: userMessage.time }, ...prev].slice(0, 10)
-    );
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/doubt/ask-stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        question: currentQuestion || "Please solve this from the uploaded image",
+        subject: subject !== "All Subjects" ? subject : "",
+        language,
+      }),
+    });
 
-    const currentQuestion = question;
-    setQuestion("");
-    setUploadedFile(null);
-    setPreviewUrl(null);
-    setLoading(true);
-
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/doubt/ask`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question: currentQuestion || "Please solve this from the uploaded image",
-          subject: subject !== "All Subjects" ? subject : "",
-          language,
-        }),
-      });
-
-      const data = await response.json();
-
-      const aiMessage = {
-        id: Date.now() + 1,
-        type: "ai",
-        content: response.ok ? data.answer : data.detail || "Something went wrong!",
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
-
-      setMessages((prev) => [...prev, aiMessage]);
-    } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          type: "ai",
-          content: "Server error. Make sure backend is running.",
-          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        },
-      ]);
+    if (!response.ok || !response.body) {
+      throw new Error("Stream failed");
     }
 
-    setLoading(false);
-  };
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullAnswer = "";
+
+    setLoading(false); // pehla chunk aate hi loading dots hata do
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      fullAnswer += decoder.decode(value, { stream: true });
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === aiMessageId ? { ...m, content: fullAnswer } : m
+        )
+      );
+    }
+  } catch (err) {
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === aiMessageId
+          ? { ...m, content: "Server error. Make sure backend is running." }
+          : m
+      )
+    );
+  }
+
+  setLoading(false);
+};
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
