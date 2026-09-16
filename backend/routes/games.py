@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from supabase import create_client
-from anthropic import Anthropic
+from openai import OpenAI
 import os
 import json
 from dotenv import load_dotenv
@@ -9,7 +9,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 router = APIRouter()
-client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+client = OpenAI(
+    base_url=os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1"),
+    api_key=os.getenv("NVIDIA_API_KEY"),
+)
+MODEL_NAME = "nvidia/nemotron-3.5-lightning-30b-a3b"
+
 supabase = create_client(
     os.getenv("SUPABASE_URL"),
     os.getenv("SUPABASE_ANON_KEY")
@@ -93,13 +98,14 @@ Return ONLY a valid JSON array like this:
 Make questions fun, educational and exam relevant.
 Return ONLY the JSON array, nothing else."""
 
-        message = client.messages.create(
-            model="claude-sonnet-4-6",
+        completion = client.chat.completions.create(
+            model=MODEL_NAME,
             max_tokens=2048,
+            temperature=0.5,
             messages=[{"role": "user", "content": prompt}]
         )
 
-        response_text = message.content[0].text.strip()
+        response_text = completion.choices[0].message.content.strip()
 
         if response_text.startswith("```"):
             response_text = response_text.split("```")[1]
