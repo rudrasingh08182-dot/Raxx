@@ -143,7 +143,7 @@ def ask_raxx_ai(
 ) -> dict:
 
     feature_prompts = {
-        "doubt": f"Ek student ne doubt pucha hai. Board: {board}, Class: {grade}, Language: {language}. Concept ko clearly, ek teacher jaisi natural tarike se samjhao — bina 'Step 1, Step 2' jaisi mechanical numbering ke.",
+        "doubt": f"Ek student ne doubt pucha hai. Class: {grade}, Language: {language}. Concept ko clearly, ek teacher jaisi natural tarike se samjhao — bina 'Step 1, Step 2' jaisi mechanical numbering ke. Agar student ne apne question mein khud kisi specific board ya exam (jaise JEE, NEET, UPSC, CBSE, ICSE) ka naam liya hai, to usी context ke hisaab se jawab do. Warna board ya exam ka koi bhi zikra mat karo — bas seedha concept explain karo, jaise koi general acha teacher karta hai.",
         "notes": f"Is topic ke liye clean exam-ready notes banao. Board: {board}, Class: {grade}. Key Points, Definitions, Formulas, Exam Tips include karo.",
         "mocktest": f"Ek MCQ question banao. Board: {board}, Class: {grade}. Format: Question, A) B) C) D), Correct Answer, Explanation.",
         "studyplan": f"Personalized study plan banao. Exam: {board}, Class: {grade}. Har din specific topics aur time batao.",
@@ -229,7 +229,7 @@ def ask_raxx_ai_stream(
     waiting for the full response. Yields plain text chunks.
     """
     feature_prompts = {
-        "doubt": f"Ek student ne doubt pucha hai. Board: {board}, Class: {grade}, Language: {language}. Concept ko clearly, ek teacher jaisi natural tarike se samjhao — bina 'Step 1, Step 2' jaisi mechanical numbering ke.",
+        "doubt": f"Ek student ne doubt pucha hai. Class: {grade}, Language: {language}. Concept ko clearly, ek teacher jaisi natural tarike se samjhao — bina 'Step 1, Step 2' jaisi mechanical numbering ke. Agar student ne apne question mein khud kisi specific board ya exam (jaise JEE, NEET, UPSC, CBSE, ICSE) ka naam liya hai, to usी context ke hisaab se jawab do. Warna board ya exam ka koi bhi zikra mat karo — bas seedha concept explain karo, jaise koi general acha teacher karta hai.",
         "notes": f"Is topic ke liye clean exam-ready notes banao. Board: {board}, Class: {grade}. Key Points, Definitions, Formulas, Exam Tips include karo.",
         "mocktest": f"Ek MCQ question banao. Board: {board}, Class: {grade}. Format: Question, A) B) C) D), Correct Answer, Explanation.",
         "studyplan": f"Personalized study plan banao. Exam: {board}, Class: {grade}. Har din specific topics aur time batao.",

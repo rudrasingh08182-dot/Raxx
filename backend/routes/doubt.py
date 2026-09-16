@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 from utils.gemini_helper import ask_raxx_ai, ask_raxx_ai_stream
-from utils.gemini_helper import ask_raxx_ai
 
 router = APIRouter()
 
@@ -17,12 +16,10 @@ class DoubtRequest(BaseModel):
 @router.post("/ask")
 def solve_doubt(doubt: DoubtRequest):
     try:
-        # Subject context add karo question mein
         question = doubt.question
         if doubt.subject:
             question = f"Subject: {doubt.subject}\n\nDoubt: {doubt.question}"
 
-        # gemini_helper se call karo — ab RAG-aware (doubt feature ke liye) + caching
         result = ask_raxx_ai(
             question=question,
             feature="doubt",
@@ -41,7 +38,7 @@ def solve_doubt(doubt: DoubtRequest):
             "answer": result["answer"],
             "subject": doubt.subject,
             "language": doubt.language,
-            "grounded": result.get("grounded", False),  # true = answer used your knowledge base
+            "grounded": result.get("grounded", False),
             "cache_read": result["cache_read"],
             "tokens_used": result["tokens_used"],
         }
@@ -69,5 +66,12 @@ def solve_doubt_stream(doubt: DoubtRequest):
         ):
             yield chunk
 
-    return StreamingResponse(event_generator(), media_type="text/plain")
-    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/plain",
+        headers={
+            "X-Accel-Buffering": "no",   # Render/Nginx proxy buffering off
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
