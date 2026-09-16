@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from utils.gemini_helper import ask_raxx_ai
 import json
+import re
 
 router = APIRouter()
 
@@ -65,13 +66,12 @@ Return ONLY the JSON array, nothing else."""
         # JSON parse karo
         response_text = result["answer"].strip()
 
-        # Markdown remove karo agar ho
-        if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
+        # JSON array nikaalo, chahe model ne aage-peeche kuch bhi extra text likha ho
+        match = re.search(r'\[.*\]', response_text, re.DOTALL)
+        if not match:
+            raise json.JSONDecodeError("No JSON array found in response", response_text, 0)
 
-        questions = json.loads(response_text)
+        questions = json.loads(match.group(0))
 
         return {
             "status": "success",
