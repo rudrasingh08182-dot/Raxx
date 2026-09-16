@@ -144,7 +144,7 @@ def ask_raxx_ai(
 
         response = client.chat.completions.create(
             model=MODEL_NAME,
-            max_tokens=1500,
+            max_tokens=4000,
             # Low temperature keeps answers closer to the RAG reference
             # material instead of drifting toward the model's own knowledge.
             temperature=0.3,
