@@ -260,7 +260,7 @@ export default function CareerGuide() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/career/suggest", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/career/suggest`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
