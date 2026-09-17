@@ -24,7 +24,7 @@ MODEL_NAME = "nvidia/nemotron-3.5-lightning-30b-a3b"
 # Ye features ke liye Nemotron ka chain-of-thought reasoning off kar dete hain
 # taaki jawab jaldi aaye. RAG grounding (doubt feature ke liye) is switch se
 # bilkul independent hai — wo hamesha chalta rahega chahe reasoning on ho ya off
-FAST_FEATURES = {"mocktest", "career", "doubt", "notes"}
+FAST_FEATURES = {"mocktest", "career", "doubt", "notes", "studyplan"}
 
 RAXX_SYSTEM_PROMPT = """
 You are RAXX AI, India's smartest AI study assistant — built for every Indian student
@@ -181,7 +181,7 @@ def ask_raxx_ai(
         "doubt": f"Ek student ne doubt pucha hai. Class: {grade}, Language: {language}. Concept ko clearly, ek teacher jaisi natural tarike se samjhao — bina 'Step 1, Step 2' jaisi mechanical numbering ke. Agar student ne apne question mein khud kisi specific board ya exam (jaise JEE, NEET, UPSC, CBSE, ICSE) ka naam liya hai, to usी context ke hisaab se jawab do. Warna board ya exam ka koi bhi zikra mat karo — bas seedha concept explain karo, jaise koi general acha teacher karta hai.",
         "notes": f"Is topic ke liye clean exam-ready notes banao. Board: {board}, Class: {grade}. Key Points, Definitions, Formulas, Exam Tips include karo — lekin plain, simple formatting mein (no markdown headers, no tables, no emoji-section-markers), jaise ek achha teacher apne haath se likhe hue clean notes deta hai.",
         "mocktest": f"Board: {board}, Class: {grade} ke liye exam-relevant MCQs banao. Neeche diye gaye exact JSON format instructions follow karo — sirf wahi output karo, koi greeting, explanation, ya extra text mat likho.",
-        "studyplan": f"Personalized study plan banao. Exam: {board}, Class: {grade}. Har din specific topics aur time batao.",
+        "studyplan": f"Exam: {board}, Class: {grade} ke liye detailed study plan banao. Neeche diye gaye exact JSON format instructions follow karo — sirf wahi output karo, koi greeting, explanation, ya extra text mat likho.",
         "career": f"Class: {grade}, Board: {board} ke student ke liye career guidance do. Neeche diye gaye exact JSON format instructions follow karo — sirf wahi output karo, koi greeting ya extra text mat likho.",
         "code_review": f"Is code ko review karo. Language: {language}. Kya sahi hai, kya improve ho sakta hai, optimized version do.",
         "scholarship": f"Best government scholarships find karo. Board: {board}, Class: {grade}. Naam, eligibility, amount, process batao.",
@@ -215,14 +215,15 @@ def ask_raxx_ai(
         }
         # mocktest/career ka structured JSON bada hota hai, isliye zyada tokens;
         # doubt/notes ka jawab chhota conversational hota hai, 4000 kaafi hai
-        max_out_tokens = 14000 if feature in {"mocktest", "career"} else 4000
+        max_out_tokens = 14000 if feature in {"mocktest", "career", "studyplan"} else 4000
 
     # JSON-structured features (mocktest/career) mein repetition penalty OFF —
     # warna model field names/brackets/quotes repeat karne se bachne ki koshish
     # karta hai (JSON mein wahi tokens baar-baar aate hain), aur isi wajah se
     # beech mein hi generation rok deta hai ya JSON structure todh deta hai
-    freq_penalty = 0.0 if feature in {"mocktest", "career"} else 0.4
-    pres_penalty = 0.0 if feature in {"mocktest", "career"} else 0.2
+    freq_penalty = 0.0 if feature in {"mocktest", "career", "studyplan"} else 0.4
+    pres_penalty = 0.0 if feature in {"mocktest", "career", "studyplan"} else 0.2
+
 
     try:
         client = get_nvidia_client()
@@ -300,7 +301,7 @@ def ask_raxx_ai_stream(
         "doubt": f"Ek student ne doubt pucha hai. Class: {grade}, Language: {language}. Concept ko clearly, ek teacher jaisi natural tarike se samjhao — bina 'Step 1, Step 2' jaisi mechanical numbering ke. Agar student ne apne question mein khud kisi specific board ya exam (jaise JEE, NEET, UPSC, CBSE, ICSE) ka naam liya hai, to usी context ke hisaab se jawab do. Warna board ya exam ka koi bhi zikra mat karo — bas seedha concept explain karo, jaise koi general acha teacher karta hai.",
         "notes": f"Is topic ke liye clean exam-ready notes banao. Board: {board}, Class: {grade}. Key Points, Definitions, Formulas, Exam Tips include karo — lekin plain, simple formatting mein (no markdown headers, no tables, no emoji-section-markers), jaise ek achha teacher apne haath se likhe hue clean notes deta hai.",
         "mocktest": f"Board: {board}, Class: {grade} ke liye exam-relevant MCQs banao. Neeche diye gaye exact JSON format instructions follow karo — sirf wahi output karo, koi greeting, explanation, ya extra text mat likho.",
-        "studyplan": f"Personalized study plan banao. Exam: {board}, Class: {grade}. Har din specific topics aur time batao.",
+        "studyplan": f"Exam: {board}, Class: {grade} ke liye detailed study plan banao. Neeche diye gaye exact JSON format instructions follow karo — sirf wahi output karo, koi greeting, explanation, ya extra text mat likho.",
         "career": f"Class: {grade}, Board: {board} ke student ke liye career guidance do. Neeche diye gaye exact JSON format instructions follow karo — sirf wahi output karo, koi greeting ya extra text mat likho.",
         "code_review": f"Is code ko review karo. Language: {language}. Kya sahi hai, kya improve ho sakta hai, optimized version do.",
         "scholarship": f"Best government scholarships find karo. Board: {board}, Class: {grade}. Naam, eligibility, amount, process batao.",
@@ -329,10 +330,10 @@ def ask_raxx_ai_stream(
             "chat_template_kwargs": {"enable_thinking": False},
             "reasoning_budget": 0,
         }
-        max_out_tokens = 14000 if feature in {"mocktest", "career"} else 4000
+        max_out_tokens = 14000 if feature in {"mocktest", "career", "studyplan"} else 4000
 
-    freq_penalty = 0.0 if feature in {"mocktest", "career"} else 0.4
-    pres_penalty = 0.0 if feature in {"mocktest", "career"} else 0.2
+    freq_penalty = 0.0 if feature in {"mocktest", "career", "studyplan"} else 0.4
+    pres_penalty = 0.0 if feature in {"mocktest", "career", "studyplan"} else 0.2
 
     client = get_nvidia_client()
 
