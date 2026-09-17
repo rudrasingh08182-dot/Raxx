@@ -9,9 +9,13 @@ import os, random, string
 
 router = APIRouter(prefix='/api/batch', tags=['batch'])
 
+# Service role key use kar rahe hain kyunki ye backend server-side trusted
+# code hai — validation (teacher_id match, etc.) yahi route khud karta hai,
+# Supabase Auth session frontend se forward nahi ho raha. Service key RLS
+# ko bypass karta hai isliye insert/update yaha se allowed rahenge.
 supabase = create_client(
     os.getenv('SUPABASE_URL'),
-    os.getenv('SUPABASE_ANON_KEY')
+    os.getenv('SUPABASE_SERVICE_KEY')
 )
 
 # ═══════════════════════════════════════
