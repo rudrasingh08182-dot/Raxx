@@ -24,7 +24,7 @@ MODEL_NAME = "nvidia/nemotron-3.5-lightning-30b-a3b"
 # Ye features ke liye Nemotron ka chain-of-thought reasoning off kar dete hain
 # taaki jawab jaldi aaye. RAG grounding (doubt feature ke liye) is switch se
 # bilkul independent hai — wo hamesha chalta rahega chahe reasoning on ho ya off
-FAST_FEATURES = {"mocktest", "career", "doubt"}
+FAST_FEATURES = {"mocktest", "career", "doubt", "notes"}
 
 RAXX_SYSTEM_PROMPT = """
 You are RAXX AI, India's smartest AI study assistant — built for every Indian student
