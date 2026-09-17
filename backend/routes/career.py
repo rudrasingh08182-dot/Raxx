@@ -3,8 +3,34 @@ from pydantic import BaseModel
 from typing import List
 from utils.gemini_helper import ask_raxx_ai
 import json
+import re as _re
 
 router = APIRouter()
+
+
+def _repair_malformed_json(text: str) -> str:
+    """
+    Fixes a known AI formatting slip where a string-array item gets written
+    as a key:value pair instead of one plain string, e.g.:
+        "Step 4 - First job": "Junior Developer role",
+    gets turned back into:
+        "Step 4 - First job: Junior Developer role",
+    Only touches pairs whose "key" is NOT one of our known real JSON keys,
+    so actual object fields (title, emoji, description, etc.) are untouched.
+    """
+    known_keys = {
+        "careers", "title", "emoji", "description", "why_suits", "key_exams",
+        "top_colleges", "salary_range", "growth", "roadmap",
+    }
+    pattern = _re.compile(r'"([^"]+)":\s*"([^"]*)"(?=\s*[,\]\n])')
+
+    def merge_safe(match):
+        key, value = match.group(1), match.group(2)
+        if key in known_keys:
+            return match.group(0)
+        return f'"{key}: {value}"'
+
+    return pattern.sub(merge_safe, text)
 
 class CareerRequest(BaseModel):
     student_name: str
@@ -47,15 +73,23 @@ one item:
       "salary_range": "Rs.X - Rs.Y LPA (starting)",
       "growth": "High / Medium / Very High",
       "roadmap": [
-        "Step 1 - Right now",
-        "Step 2 - After Class 12",
-        "Step 3 - During graduation",
-        "Step 4 - First job",
-        "Step 5 - 5 years goal"
+        "Step 1 - Right now: what to start doing immediately (e.g. specific skill/course)",
+        "Step 2 - After Class 12: which exam/admission path to follow",
+        "Step 3 - During graduation: what to build/practice/intern in",
+        "Step 4 - First job: what role to target first",
+        "Step 5 - 5 years goal: what senior position/milestone to aim for"
       ]
     }}
   ]
-}}"""
+}}
+
+CRITICAL — roadmap formatting rule:
+Every roadmap item is ONE plain string only, formatted exactly as
+"Step X - phase: detail text here" — the colon is just a character INSIDE
+the string, not a JSON key-value pair. NEVER write a roadmap item as
+"Step X - phase": "detail text" (that is invalid — it turns a string array
+item into a broken key:value pair). This rule applies to every single step,
+including Step 4 and Step 5 — do not change format partway through the array."""
 
     last_error = "Unknown error"
     for attempt in range(2):
@@ -78,6 +112,7 @@ one item:
                 raise json.JSONDecodeError("No JSON object found in response", raw, 0)
 
             json_text = match.group(0)
+            json_text = _repair_malformed_json(json_text)
             try:
                 data_result = json.loads(json_text)
             except json.JSONDecodeError:

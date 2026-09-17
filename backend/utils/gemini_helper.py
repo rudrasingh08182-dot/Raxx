@@ -118,6 +118,38 @@ CODING: C, C++, Python, Java, JavaScript
 """
 
 
+import re as _re
+
+def _repair_malformed_json(text: str) -> str:
+    """
+    Fixes a common AI bug where array string items get written as
+    key:value pairs instead of plain strings, e.g.:
+        "Step 4 - First job": "Junior Developer role",
+    should just be:
+        "Step 4 - First job: Junior Developer role",
+    Only touches pairs whose "key" is NOT one of our known real JSON keys —
+    so actual object fields (title, emoji, description, etc.) are untouched.
+    """
+    known_keys = {
+        "careers", "title", "emoji", "description", "why_suits", "key_exams",
+        "top_colleges", "salary_range", "growth", "roadmap",
+        "overview", "total_days", "daily_hours", "tip", "days", "day",
+        "date_label", "focus", "tasks", "time", "subject", "topic", "type",
+        "duration", "revision", "motivation", "questions", "question",
+        "options", "answer", "explanation",
+    }
+
+    pattern = _re.compile(r'"([^"]+)":\s*"([^"]*)"(?=\s*[,\]\n])')
+
+    def merge_safe(match):
+        key, value = match.group(1), match.group(2)
+        if key in known_keys:
+            return match.group(0)
+        return f'"{key}: {value}"'
+
+    return pattern.sub(merge_safe, text)
+
+
 def _build_rag_context(question: str, board: str, grade: str, subject: str = ""):
     """
     Tries to retrieve relevant knowledge-base chunks for a school-level doubt.
