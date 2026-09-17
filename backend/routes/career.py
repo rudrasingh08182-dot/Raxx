@@ -16,8 +16,10 @@ class CareerRequest(BaseModel):
 
 @router.post("/suggest")
 async def suggest_careers(data: CareerRequest):
-    try:
-        question = f"""You are an expert Indian career counselor. A student needs career guidance.
+    import re
+    import sys
+
+    question = f"""You are an expert Indian career counselor. A student needs career guidance.
 
 Student Profile:
 - Name: {data.student_name}
@@ -29,7 +31,10 @@ Student Profile:
 
 Based on this profile, suggest exactly 4 career paths that are realistic and well-suited.
 
-Respond ONLY in this exact JSON format, no extra text:
+Respond ONLY in this exact JSON format, no extra text. Use DOUBLE QUOTES only for
+every key and every string value — never single quotes. Every field named as an
+array (key_exams, top_colleges, roadmap) must always be a JSON array, even with
+one item:
 {{
   "careers": [
     {{
@@ -52,41 +57,47 @@ Respond ONLY in this exact JSON format, no extra text:
   ]
 }}"""
 
-        # gemini_helper se call karo — caching automatic!
-        result = ask_raxx_ai(
-            question=question,
-            feature="career",
-            language=data.language,
-            board=data.board,
-            grade=data.class_level,
-        )
+    last_error = "Unknown error"
+    for attempt in range(2):
+        raw = ""
+        try:
+            result = ask_raxx_ai(
+                question=question,
+                feature="career",
+                language=data.language,
+                board=data.board,
+                grade=data.class_level,
+            )
 
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
+            if not result["success"]:
+                raise RuntimeError(result["error"])
 
-        import re
-        raw = result["answer"].strip()
-        match = re.search(r'\{.*\}', raw, re.DOTALL)
-        if not match:
-            raise json.JSONDecodeError("No JSON object found in response", raw, 0)
-        data_result = json.loads(match.group(0))
+            raw = result["answer"].strip()
+            match = re.search(r'\{.*\}', raw, re.DOTALL)
+            if not match:
+                raise json.JSONDecodeError("No JSON object found in response", raw, 0)
 
-        return {
-            "success": True,
-            "data": data_result,
-            "cache_read": result["cache_read"],
-            "tokens_used": result["tokens_used"],
-        }
+            json_text = match.group(0)
+            try:
+                data_result = json.loads(json_text)
+            except json.JSONDecodeError:
+                # Model ne kabhi-kabhi single quotes ya thoda loose JSON de
+                # deta hai — json5 usko bhi parse kar leta hai
+                import json5
+                data_result = json5.loads(json_text)
 
-    except json.JSONDecodeError as e:
-        import sys
-        print(f"JSON PARSE FAILED. Raw AI response was:\n{raw!r}", file=sys.stderr)
-        sys.stderr.flush()
-        raise HTTPException(status_code=500, detail=f"AI response parse error: {str(e)}")
-    except HTTPException:
-        raise
-    except Exception as e:
-        import traceback, sys
-        traceback.print_exc(file=sys.stderr)
-        sys.stderr.flush()
-        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {str(e)}")
+            return {
+                "success": True,
+                "data": data_result,
+                "cache_read": result["cache_read"],
+                "tokens_used": result["tokens_used"],
+            }
+
+        except Exception as e:
+            last_error = str(e)
+            print(f"[career/suggest] Attempt {attempt + 1} failed: {type(e).__name__}: {e}", file=sys.stderr)
+            if raw:
+                print(f"Raw AI response was:\n{raw!r}", file=sys.stderr)
+            sys.stderr.flush()
+
+    raise HTTPException(status_code=500, detail=f"AI response parse error after retries: {last_error}")

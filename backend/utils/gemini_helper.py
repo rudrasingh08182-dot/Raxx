@@ -21,10 +21,10 @@ def get_nvidia_client():
 # Update this if NVIDIA renames/updates the model string later
 MODEL_NAME = "nvidia/nemotron-3.5-lightning-30b-a3b"
 
-# Ye features strict JSON return karte hain — inke liye Nemotron ka lamba
-# chain-of-thought reasoning off kar dete hain (/no_think), warna model
-# JSON likhne se pehle hi apni "thinking" me max_tokens khatam kar deta hai
-JSON_FEATURES = {"mocktest", "career"}
+# Ye features ke liye Nemotron ka chain-of-thought reasoning off kar dete hain
+# taaki jawab jaldi aaye. RAG grounding (doubt feature ke liye) is switch se
+# bilkul independent hai — wo hamesha chalta rahega chahe reasoning on ho ya off
+FAST_FEATURES = {"mocktest", "career", "doubt"}
 
 RAXX_SYSTEM_PROMPT = """
 You are RAXX AI, India's smartest AI study assistant — built for every Indian student
@@ -184,12 +184,14 @@ def ask_raxx_ai(
 
     max_out_tokens = 4000
     extra_body = {}
-    if feature in JSON_FEATURES:
-        # enable_thinking=False se reasoning off honi chahiye, lekin agar NIM
-        # endpoint ye parameter ignore kar de to bhi itna max_tokens rakha hai
-        # ki reasoning + JSON answer dono fit ho jaayein
-        max_out_tokens = 14000
-        extra_body = {"chat_template_kwargs": {"enable_thinking": False}}
+    if feature in FAST_FEATURES:
+        extra_body = {
+            "chat_template_kwargs": {"enable_thinking": False},
+            "reasoning_budget": 0,
+        }
+        # mocktest/career ka structured JSON bada hota hai, isliye zyada tokens;
+        # doubt/notes ka jawab chhota conversational hota hai, 4000 kaafi hai
+        max_out_tokens = 14000 if feature in {"mocktest", "career"} else 4000
 
     try:
         client = get_nvidia_client()
@@ -281,14 +283,24 @@ def ask_raxx_ai_stream(
 
     full_prompt = f"{SYLLABUS_CONTEXT}\n\n{feature_instruction}{rag_context}\n\nStudent Question: {question}"
 
+    max_out_tokens = 4000
+    extra_body = {}
+    if feature in FAST_FEATURES:
+        extra_body = {
+            "chat_template_kwargs": {"enable_thinking": False},
+            "reasoning_budget": 0,
+        }
+        max_out_tokens = 14000 if feature in {"mocktest", "career"} else 4000
+
     client = get_nvidia_client()
 
     stream = client.chat.completions.create(
         model=MODEL_NAME,
-        max_tokens=4000,
+        max_tokens=max_out_tokens,
         temperature=0.4,
         frequency_penalty=0.4,
         presence_penalty=0.2,
+        extra_body=extra_body,
         messages=[
             {"role": "system", "content": RAXX_SYSTEM_PROMPT},
             {"role": "user", "content": full_prompt},
