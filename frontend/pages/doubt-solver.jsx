@@ -41,6 +41,19 @@ export default function DoubtSolver() {
  const askDoubt = async () => {
   if (!question.trim() && !uploadedFile) return;
 
+  // Last 2 Q&A pairs nikalo history ke liye — poori chat nahi, sirf recent context
+  const completedMessages = messages.filter((m) => m.content && m.content.trim() !== "");
+  const historyPairs = [];
+  for (let i = 0; i < completedMessages.length - 1; i++) {
+    if (completedMessages[i].type === "user" && completedMessages[i + 1]?.type === "ai") {
+      historyPairs.push({
+        question: completedMessages[i].content,
+        answer: completedMessages[i + 1].content,
+      });
+    }
+  }
+  const recentHistory = historyPairs.slice(-2);
+
   const userMessage = {
     id: Date.now(),
     type: "user",
@@ -75,13 +88,14 @@ export default function DoubtSolver() {
   ]);
 
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/doubt/ask-stream`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/doubt/ask-stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         question: currentQuestion || "Please solve this from the uploaded image",
         subject: subject !== "All Subjects" ? subject : "",
         language,
+        history: recentHistory,
       }),
     });
 
