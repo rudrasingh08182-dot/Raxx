@@ -217,6 +217,13 @@ def ask_raxx_ai(
         # doubt/notes ka jawab chhota conversational hota hai, 4000 kaafi hai
         max_out_tokens = 14000 if feature in {"mocktest", "career"} else 4000
 
+    # JSON-structured features (mocktest/career) mein repetition penalty OFF —
+    # warna model field names/brackets/quotes repeat karne se bachne ki koshish
+    # karta hai (JSON mein wahi tokens baar-baar aate hain), aur isi wajah se
+    # beech mein hi generation rok deta hai ya JSON structure todh deta hai
+    freq_penalty = 0.0 if feature in {"mocktest", "career"} else 0.4
+    pres_penalty = 0.0 if feature in {"mocktest", "career"} else 0.2
+
     try:
         client = get_nvidia_client()
 
@@ -225,8 +232,8 @@ def ask_raxx_ai(
             model=MODEL_NAME,
             max_tokens=max_out_tokens,
             temperature=0.4,
-            frequency_penalty=0.4,    # repetition rokta hai
-            presence_penalty=0.2,
+            frequency_penalty=freq_penalty,
+            presence_penalty=pres_penalty,
             extra_body=extra_body,
             messages=_build_messages(RAXX_SYSTEM_PROMPT, full_prompt, history),
         )
@@ -324,6 +331,9 @@ def ask_raxx_ai_stream(
         }
         max_out_tokens = 14000 if feature in {"mocktest", "career"} else 4000
 
+    freq_penalty = 0.0 if feature in {"mocktest", "career"} else 0.4
+    pres_penalty = 0.0 if feature in {"mocktest", "career"} else 0.2
+
     client = get_nvidia_client()
 
     _t1 = time.time()
@@ -333,8 +343,8 @@ def ask_raxx_ai_stream(
         model=MODEL_NAME,
         max_tokens=max_out_tokens,
         temperature=0.4,
-        frequency_penalty=0.4,
-        presence_penalty=0.2,
+        frequency_penalty=freq_penalty,
+        presence_penalty=pres_penalty,
         extra_body=extra_body,
         messages=_build_messages(RAXX_SYSTEM_PROMPT, full_prompt, history),
         stream=True,
