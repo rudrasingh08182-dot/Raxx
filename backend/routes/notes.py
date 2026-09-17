@@ -141,6 +141,32 @@ def generate_notes_stream(req: NotesRequest):
     )
 
 
+import re as _re
+
+# Symbols jo Helvetica font me nahi hain — inko safe ASCII text se replace
+# karte hain taaki PDF me black box/tofu na dikhe
+_SYMBOL_MAP = {
+    "×": "x", "÷": "/", "≠": "!=", "≤": "<=", "≥": ">=",
+    "→": "->", "←": "<-", "↔": "<->",
+    "•": "-", "✗": "x", "✓": "[check]", "✔": "[check]",
+    "✅": "[OK]", "❌": "[X]", "⚠️": "[!]", "⚠": "[!]",
+    "—": "-", "–": "-", "’": "'", "‘": "'", "“": '"', "”": '"', "…": "...",
+    "√": "sqrt", "π": "pi", "∞": "infinity", "°": " deg",
+}
+
+def _sanitize_for_pdf(text: str) -> str:
+    for bad, good in _SYMBOL_MAP.items():
+        text = text.replace(bad, good)
+    # Baaki koi bhi character jo Helvetica ke Latin-1 range se bahar hai
+    # (emoji, Devanagari, etc.) usko silently drop kar do — box dikhne se behtar
+    text = "".join(ch for ch in text if ord(ch) < 256)
+    return text
+
+def _md_line_to_html(line: str) -> str:
+    # **bold** ko reportlab ke <b> tag me convert karo
+    return _re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", line)
+
+
 @router.post("/download-pdf")
 def download_notes_pdf(req: NotesPdfRequest):
     buffer = io.BytesIO()
@@ -153,20 +179,35 @@ def download_notes_pdf(req: NotesPdfRequest):
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle("RaxxTitle", parent=styles["Heading1"], textColor=HexColor("#8B3A2A"), fontSize=18, spaceAfter=4)
     meta_style = ParagraphStyle("RaxxMeta", parent=styles["Normal"], textColor=HexColor("#6B5E52"), fontSize=10, spaceAfter=14)
-    body_style = ParagraphStyle("RaxxBody", parent=styles["Normal"], fontSize=11, leading=16, spaceAfter=8)
+    h2_style = ParagraphStyle("RaxxH2", parent=styles["Heading2"], textColor=HexColor("#2D5A47"), fontSize=14, spaceBefore=10, spaceAfter=6)
+    body_style = ParagraphStyle("RaxxBody", parent=styles["Normal"], fontSize=11, leading=16, spaceAfter=6)
+    bullet_style = ParagraphStyle("RaxxBullet", parent=body_style, leftIndent=14, bulletIndent=4)
 
     story = [
-        Paragraph(f"RAXX AI — {req.subject}", title_style),
-        Paragraph(f"Chapter: {req.chapter} | Type: {req.notes_type}", meta_style),
+        Paragraph(_sanitize_for_pdf(f"RAXX AI — {req.subject}"), title_style),
+        Paragraph(_sanitize_for_pdf(f"Chapter: {req.chapter} | Type: {req.notes_type}"), meta_style),
     ]
 
-    for para in req.notes.split("\n"):
-        para = para.strip()
-        if not para:
+    for raw_line in req.notes.split("\n"):
+        line = raw_line.strip()
+        if not line:
             story.append(Spacer(1, 6))
             continue
-        safe = para.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        story.append(Paragraph(safe, body_style))
+
+        line = _sanitize_for_pdf(line)
+        safe = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        safe = _md_line_to_html(safe)
+
+        if safe.startswith("### "):
+            story.append(Paragraph(safe[4:].strip(), h2_style))
+        elif safe.startswith("## "):
+            story.append(Paragraph(safe[3:].strip(), h2_style))
+        elif safe.startswith("# "):
+            story.append(Paragraph(safe[2:].strip(), h2_style))
+        elif safe.startswith("- ") or safe.startswith("* "):
+            story.append(Paragraph(f"• {safe[2:].strip()}", bullet_style))
+        else:
+            story.append(Paragraph(safe, body_style))
 
     doc.build(story)
     buffer.seek(0)
