@@ -291,7 +291,12 @@ def ask_raxx_ai_stream(
     if feature == "doubt":
         rag_context = _build_rag_context(question, board, grade, subject)
 
+    import time
+    _t0 = time.time()
+
     full_prompt = f"{SYLLABUS_CONTEXT}\n\n{feature_instruction}{rag_context}\n\nStudent Question: {question}"
+
+    print(f"[TIMING-STREAM] RAG + prompt build took {time.time() - _t0:.2f}s", flush=True)
 
     max_out_tokens = 4000
     extra_body = {}
@@ -303,6 +308,9 @@ def ask_raxx_ai_stream(
         max_out_tokens = 14000 if feature in {"mocktest", "career"} else 4000
 
     client = get_nvidia_client()
+
+    _t1 = time.time()
+    _first_chunk_logged = False
 
     stream = client.chat.completions.create(
         model=MODEL_NAME,
@@ -318,6 +326,8 @@ def ask_raxx_ai_stream(
         stream=True,
     )
 
+    print(f"[TIMING-STREAM] client.create() call setup took {time.time() - _t1:.2f}s", flush=True)
+
     # Agar model beech-beech mein <think>...</think> bhejta hai, usko user
     # tak pohochne se pehle hi filter kar do
     buffer = ""
@@ -329,6 +339,10 @@ def ask_raxx_ai_stream(
         delta = chunk.choices[0].delta.content
         if not delta:
             continue
+
+        if not _first_chunk_logged:
+            print(f"[TIMING-STREAM] First chunk received after {time.time() - _t1:.2f}s (from stream start)", flush=True)
+            _first_chunk_logged = True
 
         buffer += delta
 
@@ -354,3 +368,5 @@ def ask_raxx_ai_stream(
 
     if buffer and not inside_think:
         yield buffer
+
+    print(f"[TIMING-STREAM] Total stream duration: {time.time() - _t1:.2f}s", flush=True)
