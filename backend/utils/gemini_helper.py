@@ -180,7 +180,7 @@ def ask_raxx_ai(
     feature_prompts = {
         "doubt": f"Ek student ne doubt pucha hai. Class: {grade}, Language: {language}. Concept ko clearly, ek teacher jaisi natural tarike se samjhao — bina 'Step 1, Step 2' jaisi mechanical numbering ke. Agar student ne apne question mein khud kisi specific board ya exam (jaise JEE, NEET, UPSC, CBSE, ICSE) ka naam liya hai, to usी context ke hisaab se jawab do. Warna board ya exam ka koi bhi zikra mat karo — bas seedha concept explain karo, jaise koi general acha teacher karta hai.",
         "notes": f"Is topic ke liye clean exam-ready notes banao. Board: {board}, Class: {grade}. Key Points, Definitions, Formulas, Exam Tips include karo — lekin plain, simple formatting mein (no markdown headers, no tables, no emoji-section-markers), jaise ek achha teacher apne haath se likhe hue clean notes deta hai.",
-        "mocktest": f"Ek MCQ question banao. Board: {board}, Class: {grade}. Format: Question, A) B) C) D), Correct Answer, Explanation.",
+        "mocktest": f"Board: {board}, Class: {grade} ke liye exam-relevant MCQs banao. Neeche diye gaye exact JSON format instructions follow karo — sirf wahi output karo, koi greeting, explanation, ya extra text mat likho.",
         "studyplan": f"Personalized study plan banao. Exam: {board}, Class: {grade}. Har din specific topics aur time batao.",
         "career": f"Class: {grade}, Board: {board} ke student ke liye career guidance do. Neeche diye gaye exact JSON format instructions follow karo — sirf wahi output karo, koi greeting ya extra text mat likho.",
         "code_review": f"Is code ko review karo. Language: {language}. Kya sahi hai, kya improve ho sakta hai, optimized version do.",

@@ -86,6 +86,7 @@ Return ONLY the JSON array, nothing else."""
         }
 
     except json.JSONDecodeError:
+        print(f"[MOCKTEST PARSE FAIL] Raw response: {response_text[:500]}", flush=True)
         raise HTTPException(status_code=500, detail="Failed to parse questions. Please try again.")
     except HTTPException:
         raise
@@ -97,6 +98,7 @@ Return ONLY the JSON array, nothing else."""
 def submit_test(req: SubmitTestRequest):
     try:
         score = 0
+        
         results = []
 
         for q in req.questions:
