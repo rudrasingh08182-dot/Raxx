@@ -148,6 +148,24 @@ def _build_rag_context(question: str, board: str, grade: str, subject: str = "")
     return "\n\n---\n\nREFERENCE MATERIAL (from RAXX AI's verified knowledge base):\n\n" + "\n\n---\n\n".join(parts)
 
 
+def _build_messages(system_prompt: str, full_prompt: str, history: list = None) -> list:
+    """
+    History ko chat messages me convert karta hai — sirf last 2 Q&A pairs,
+    har turn 800 characters tak capped (token cost control ke liye).
+    """
+    messages = [{"role": "system", "content": system_prompt}]
+    if history:
+        for turn in history[-2:]:
+            q = (turn.get("question") or "").strip()[:800]
+            a = (turn.get("answer") or "").strip()[:800]
+            if q:
+                messages.append({"role": "user", "content": q})
+            if a:
+                messages.append({"role": "assistant", "content": a})
+    messages.append({"role": "user", "content": full_prompt})
+    return messages
+
+
 def ask_raxx_ai(
     question: str,
     feature: str = "doubt",
@@ -155,7 +173,8 @@ def ask_raxx_ai(
     board: str = "CBSE",
     grade: str = "12",
     subject: str = "",
-    extra_context: str = ""
+    extra_context: str = "",
+    history: list = None
 ) -> dict:
 
     feature_prompts = {
@@ -209,10 +228,7 @@ def ask_raxx_ai(
             frequency_penalty=0.4,    # repetition rokta hai
             presence_penalty=0.2,
             extra_body=extra_body,
-            messages=[
-                {"role": "system", "content": RAXX_SYSTEM_PROMPT},
-                {"role": "user", "content": full_prompt},
-            ],
+            messages=_build_messages(RAXX_SYSTEM_PROMPT, full_prompt, history),
         )
 
         choice = response.choices[0]
@@ -266,7 +282,8 @@ def ask_raxx_ai_stream(
     board: str = "CBSE",
     grade: str = "12",
     subject: str = "",
-    extra_context: str = ""
+    extra_context: str = "",
+    history: list = None
 ):
     """
     Same as ask_raxx_ai() but streams the answer token-by-token instead of
@@ -319,10 +336,7 @@ def ask_raxx_ai_stream(
         frequency_penalty=0.4,
         presence_penalty=0.2,
         extra_body=extra_body,
-        messages=[
-            {"role": "system", "content": RAXX_SYSTEM_PROMPT},
-            {"role": "user", "content": full_prompt},
-        ],
+        messages=_build_messages(RAXX_SYSTEM_PROMPT, full_prompt, history),
         stream=True,
     )
 

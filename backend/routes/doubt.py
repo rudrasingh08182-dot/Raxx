@@ -5,6 +5,10 @@ from utils.gemini_helper import ask_raxx_ai, ask_raxx_ai_stream
 
 router = APIRouter()
 
+class HistoryTurn(BaseModel):
+    question: str = ""
+    answer: str = ""
+
 class DoubtRequest(BaseModel):
     question: str
     subject: str = ""
@@ -12,6 +16,7 @@ class DoubtRequest(BaseModel):
     student_id: str = ""
     board: str = "CBSE"
     grade: str = "12"
+    history: list[HistoryTurn] = []
 
 @router.post("/ask")
 def solve_doubt(doubt: DoubtRequest):
@@ -55,6 +60,8 @@ def solve_doubt_stream(doubt: DoubtRequest):
     if doubt.subject:
         question = f"Subject: {doubt.subject}\n\nDoubt: {doubt.question}"
 
+    history_dicts = [{"question": h.question, "answer": h.answer} for h in doubt.history]
+
     def event_generator():
         for chunk in ask_raxx_ai_stream(
             question=question,
@@ -63,6 +70,7 @@ def solve_doubt_stream(doubt: DoubtRequest):
             board=doubt.board,
             grade=doubt.grade,
             subject=doubt.subject,
+            history=history_dicts,
         ):
             yield chunk
 
