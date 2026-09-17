@@ -2,8 +2,20 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 from utils.gemini_helper import ask_raxx_ai, ask_raxx_ai_stream
+import io
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.colors import HexColor
 
 router = APIRouter()
+
+class NotesPdfRequest(BaseModel):
+    subject: str
+    chapter: str
+    notes_type: str = "detailed"
+    notes: str
 
 class NotesRequest(BaseModel):
     subject: str
@@ -126,4 +138,43 @@ def generate_notes_stream(req: NotesRequest):
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
         }
+    )
+
+
+@router.post("/download-pdf")
+def download_notes_pdf(req: NotesPdfRequest):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        topMargin=0.6 * inch, bottomMargin=0.6 * inch,
+        leftMargin=0.7 * inch, rightMargin=0.7 * inch,
+    )
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle("RaxxTitle", parent=styles["Heading1"], textColor=HexColor("#8B3A2A"), fontSize=18, spaceAfter=4)
+    meta_style = ParagraphStyle("RaxxMeta", parent=styles["Normal"], textColor=HexColor("#6B5E52"), fontSize=10, spaceAfter=14)
+    body_style = ParagraphStyle("RaxxBody", parent=styles["Normal"], fontSize=11, leading=16, spaceAfter=8)
+
+    story = [
+        Paragraph(f"RAXX AI — {req.subject}", title_style),
+        Paragraph(f"Chapter: {req.chapter} | Type: {req.notes_type}", meta_style),
+    ]
+
+    for para in req.notes.split("\n"):
+        para = para.strip()
+        if not para:
+            story.append(Spacer(1, 6))
+            continue
+        safe = para.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        story.append(Paragraph(safe, body_style))
+
+    doc.build(story)
+    buffer.seek(0)
+
+    filename = f"{req.subject}_{req.chapter}_Notes.pdf".replace(" ", "_")
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
