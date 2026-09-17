@@ -180,7 +180,12 @@ def ask_raxx_ai(
     if feature == "doubt":
         rag_context = _build_rag_context(question, board, grade, subject)
 
+    import time
+    _t0 = time.time()
+
     full_prompt = f"{SYLLABUS_CONTEXT}\n\n{feature_instruction}{rag_context}\n\nStudent Question: {question}"
+
+    print(f"[TIMING] RAG + prompt build took {time.time() - _t0:.2f}s", flush=True)
 
     max_out_tokens = 4000
     extra_body = {}
@@ -196,6 +201,7 @@ def ask_raxx_ai(
     try:
         client = get_nvidia_client()
 
+        _t1 = time.time()
         response = client.chat.completions.create(
             model=MODEL_NAME,
             max_tokens=max_out_tokens,
@@ -231,7 +237,11 @@ def ask_raxx_ai(
         # If you ever need it for debugging, it's at:
         #   getattr(choice.message, "reasoning_content", None)
 
+        print(f"[TIMING] NVIDIA API call took {time.time() - _t1:.2f}s", flush=True)
+
         usage = response.usage
+        print(f"[TIMING] tokens_used = {usage.total_tokens if usage else 'N/A'} (prompt: {usage.prompt_tokens if usage else '?'}, completion: {usage.completion_tokens if usage else '?'})", flush=True)
+
         return {
             "success": True,
             "answer": answer,
