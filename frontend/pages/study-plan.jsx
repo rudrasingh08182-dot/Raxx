@@ -42,6 +42,7 @@ export default function StudyPlan() {
     subjects: [],
     weak_subjects: [],
     daily_hours: 6,
+    study_time_preference: "day", // "day" | "night" | "flexible"
   });
 
   // ── NOXTUA FOREST GREEN + WHITE TOUCH ──
@@ -209,6 +210,32 @@ export default function StudyPlan() {
             </div>
           </div>
 
+          {/* Study Time Preference */}
+          <div className="rounded-2xl p-4" style={{ background: c.surfaceElevated, border: `1px solid ${c.border}` }}>
+            <label className="text-xs font-semibold uppercase tracking-wider block mb-1" style={{ color: c.textDim }}>When Do You Study Best?</label>
+            <p className="text-xs mb-3" style={{ color: c.textDim }}>Plan tough topics ko is time ke around adjust kar dega</p>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { key: "day", label: "🌞 Day Person" },
+                { key: "night", label: "🌙 Night Owl" },
+                { key: "flexible", label: "🔄 Flexible" },
+              ].map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setForm({ ...form, study_time_preference: opt.key })}
+                  className="py-2.5 rounded-xl text-[11px] font-bold transition"
+                  style={{
+                    background: form.study_time_preference === opt.key ? c.forest : c.hover,
+                    color: form.study_time_preference === opt.key ? c.white : c.textMuted,
+                    border: form.study_time_preference === opt.key ? `1px solid ${c.forestLight}` : `1px solid ${c.border}`,
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Error */}
           {error && (
             <div className="rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(139,58,58,0.12)", border: `1px solid ${c.red}`, color: c.gold }}>
@@ -316,6 +343,7 @@ export default function StudyPlan() {
               <div style={{ color: c.textMuted }}>🎯 <span style={{ color: c.text }}>{form.exam}</span></div>
               <div style={{ color: c.textMuted }}>📅 <span style={{ color: c.text }}>{form.exam_date}</span></div>
               <div style={{ color: c.textMuted }}>⏰ <span style={{ color: c.text }}>{form.daily_hours}h/day</span></div>
+              <div style={{ color: c.textMuted }}>🕐 <span style={{ color: c.text }}>{form.study_time_preference === "night" ? "Night Owl" : form.study_time_preference === "day" ? "Day Person" : "Flexible"}</span></div>
               <div style={{ color: c.textMuted }}>📚 <span style={{ color: c.text }}>{form.subjects.length} subjects</span></div>
               <div style={{ color: c.textMuted }}>⚠️ <span style={{ color: c.text }}>{form.weak_subjects.length} weak</span></div>
             </div>
