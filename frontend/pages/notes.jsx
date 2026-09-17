@@ -96,16 +96,33 @@ export default function NotesGenerator() {
 
   const copyNotes = () => navigator.clipboard.writeText(notes);
 
-  const downloadNotes = () => {
-    const blob = new Blob([notes], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${subject || "Notes"} - ${chapter || "Chapter"}.txt`.replace(/\s+/g, "_");
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const downloadNotes = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/notes/download-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: generated?.subject || subject,
+          chapter: generated?.chapter || chapter,
+          notes_type: generated?.notes_type || notesType,
+          notes,
+        }),
+      });
+
+      if (!response.ok) throw new Error("PDF download failed");
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${subject || "Notes"}_${chapter || "Chapter"}.pdf`.replace(/\s+/g, "_");
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError("PDF download nahi ho paaya. Dobara try karo.");
+    }
   };
 
   const printNotes = () => {
