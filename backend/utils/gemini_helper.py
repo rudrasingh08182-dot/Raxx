@@ -448,25 +448,30 @@ def ask_raxx_ai_stream(
     _t1 = time.time()
     _first_chunk_logged = False
 
-    stream = client.chat.completions.create(
-        model=MODEL_NAME,
-        max_tokens=max_out_tokens,
-        temperature=0.4,
-        frequency_penalty=freq_penalty,
-        presence_penalty=pres_penalty,
-        extra_body=extra_body,
-        messages=_build_messages(RAXX_SYSTEM_PROMPT, full_prompt, history),
-        stream=True,
-    )
+    try:
+        stream = client.chat.completions.create(
+            model=MODEL_NAME,
+            max_tokens=max_out_tokens,
+            temperature=0.4,
+            frequency_penalty=freq_penalty,
+            presence_penalty=pres_penalty,
+            extra_body=extra_body,
+            messages=_build_messages(RAXX_SYSTEM_PROMPT + "\n\n" + SYLLABUS_CONTEXT, full_prompt, history),
+            stream=True,
+        )
+    except Exception as e:
+        print(f"[TIMING-STREAM] API call failed to start: {type(e).__name__}: {e}", flush=True)
+        yield "⚠️ RAXX abhi thoda busy hai, server pe load zyada hai. Please 10-15 second baad dobara try karo."
+        return
 
     print(f"[TIMING-STREAM] client.create() call setup took {time.time() - _t1:.2f}s", flush=True)
-
     # Agar model beech-beech mein <think>...</think> bhejta hai, usko user
     # tak pohochne se pehle hi filter kar do
     buffer = ""
     inside_think = False
 
-    for chunk in stream:
+    try:
+     for chunk in stream:
         if not chunk.choices:
             continue
         delta = chunk.choices[0].delta.content
@@ -500,6 +505,12 @@ def ask_raxx_ai_stream(
                     _full_answer_parts.append(buffer[:start_idx])
                 buffer = buffer[start_idx + len("<think>"):]
                 inside_think = True
+
+    except Exception as e:
+        print(f"[TIMING-STREAM] Stream interrupted: {type(e).__name__}: {e}", flush=True)
+        if not _full_answer_parts:
+            yield "\n\n⚠️ Connection beech mein toot gaya. Please dobara try karo."
+        return
 
     if buffer and not inside_think:
         yield buffer
