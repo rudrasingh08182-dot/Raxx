@@ -9,13 +9,54 @@
 
 import os
 import re
+import hashlib
 from openai import OpenAI
+from supabase import create_client
 from utils.rag_retrieval import search_knowledge
+
+_cache_db = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_KEY"))
+
+# Sirf generic/factual features cache karo — career, studyplan, mocktest
+# NEVER cache karo kyunki wo student-specific (marks, name, weak subjects) hote hain
+CACHEABLE_FEATURES = {"doubt", "notes"}
+
+
+def _make_cache_key(feature: str, board: str, grade: str, subject: str, question: str) -> str:
+    normalized = f"{feature}:{board}:{grade}:{subject}:{question.strip().lower()}"
+    return hashlib.sha256(normalized.encode()).hexdigest()
+
+
+def _get_cached_answer(cache_key: str):
+    try:
+        result = _cache_db.table("ai_answer_cache").select("answer").eq("cache_key", cache_key).execute()
+        if result.data:
+            # Background mein hit_count/last_used update karo, response block mat karo
+            _cache_db.table("ai_answer_cache").update({
+                "last_used_at": "now()",
+            }).eq("cache_key", cache_key).execute()
+            return result.data[0]["answer"]
+    except Exception as e:
+        print(f"[CACHE] Read failed (non-fatal): {e}", flush=True)
+    return None
+
+
+def _save_to_cache(cache_key: str, feature: str, answer: str):
+    try:
+        _cache_db.table("ai_answer_cache").upsert({
+            "cache_key": cache_key,
+            "feature": feature,
+            "answer": answer,
+        }).execute()
+    except Exception as e:
+        print(f"[CACHE] Write failed (non-fatal): {e}", flush=True)
 
 def get_nvidia_client():
     return OpenAI(
         base_url=os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1"),
         api_key=os.getenv("NVIDIA_API_KEY"),
+        timeout=35.0,   # cron keep-warm lagane ke baad cold-start khatam,
+                        # isliye ye sirf genuine NVIDIA slowness ke liye hai
+        max_retries=1,
     )
 
 # Update this if NVIDIA renames/updates the model string later
@@ -225,6 +266,24 @@ def ask_raxx_ai(
     if extra_context:
         feature_instruction += f"\n\nExtra Context: {extra_context}"
 
+    # Cache check — sirf generic/factual features ke liye, history wali
+    # conversations ko skip karo kyunki wo context-dependent hoti hain
+    cache_key = None
+    if feature in CACHEABLE_FEATURES and not history:
+        cache_key = _make_cache_key(feature, board, grade, subject, question)
+        cached = _get_cached_answer(cache_key)
+        if cached:
+            print(f"[CACHE] HIT for {feature}", flush=True)
+            return {
+                "success": True,
+                "answer": cached,
+                "tokens_used": 0,
+                "cache_created": 0,
+                "cache_read": 0,
+                "grounded": False,
+                "from_answer_cache": True,
+            }
+
     # RAG: only wired for "doubt" right now. Other features still work exactly
     # as before — extend this to more features once more content is ingested.
     rag_context = ""
@@ -298,6 +357,9 @@ def ask_raxx_ai(
         usage = response.usage
         print(f"[TIMING] tokens_used = {usage.total_tokens if usage else 'N/A'} (prompt: {usage.prompt_tokens if usage else '?'}, completion: {usage.completion_tokens if usage else '?'})", flush=True)
 
+        if cache_key and answer:
+            _save_to_cache(cache_key, feature, answer)
+
         return {
             "success": True,
             "answer": answer,
@@ -344,12 +406,26 @@ def ask_raxx_ai_stream(
     if extra_context:
         feature_instruction += f"\n\nExtra Context: {extra_context}"
 
+    # Cache check — hit hone par saved answer ko chunks mein todh ke
+    # "stream jaisa" bhej do, taaki frontend ka behavior same rahe
+    cache_key = None
+    if feature in CACHEABLE_FEATURES and not history:
+        cache_key = _make_cache_key(feature, board, grade, subject, question)
+        cached = _get_cached_answer(cache_key)
+        if cached:
+            print(f"[CACHE-STREAM] HIT for {feature}", flush=True)
+            words = cached.split(" ")
+            for i in range(0, len(words), 6):
+                yield " ".join(words[i:i+6]) + " "
+            return
+
     rag_context = ""
     if feature == "doubt":
         rag_context = _build_rag_context(question, board, grade, subject)
 
     import time
     _t0 = time.time()
+    _full_answer_parts = []
 
     full_prompt = f"{SYLLABUS_CONTEXT}\n\n{feature_instruction}{rag_context}\n\nStudent Question: {question}"
 
@@ -416,14 +492,20 @@ def ask_raxx_ai_stream(
                 if start_idx == -1:
                     if buffer:
                         yield buffer
+                        _full_answer_parts.append(buffer)
                     buffer = ""
                     break
                 if start_idx > 0:
                     yield buffer[:start_idx]
+                    _full_answer_parts.append(buffer[:start_idx])
                 buffer = buffer[start_idx + len("<think>"):]
                 inside_think = True
 
     if buffer and not inside_think:
         yield buffer
+        _full_answer_parts.append(buffer)
+
+    if cache_key and _full_answer_parts:
+        _save_to_cache(cache_key, feature, "".join(_full_answer_parts))
 
     print(f"[TIMING-STREAM] Total stream duration: {time.time() - _t1:.2f}s", flush=True)
