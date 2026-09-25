@@ -62,7 +62,6 @@ def _parse_questions(response_text: str):
         raise json.JSONDecodeError("No JSON array found in response", response_text, 0)
     return json.loads(match.group(0))
 
-
 @router.post("/generate")
 def generate_test(req: MockTestRequest):
     try:
@@ -71,10 +70,6 @@ def generate_test(req: MockTestRequest):
         remaining = req.num_questions
         next_id = 1
 
-        # Bade requests (15-20 questions) ek hi API call mein NVIDIA ke liye
-        # slow/unreliable ho rahe the — response beech mein hi truncate ho
-        # raha tha. Isliye chhote batches (max 5) mein generate karke combine
-        # karte hain, jo consistently kaam karta hai.
         while remaining > 0:
             batch_count = min(BATCH_SIZE, remaining)
 
@@ -96,25 +91,59 @@ def generate_test(req: MockTestRequest):
                 grade=req.grade,
             )
 
-            if not result["success"]:
-                raise HTTPException(status_code=500, detail=result["error"])
+            # ask_raxx_ai() returns the answer string directly
+            if not result:
+                raise HTTPException(
+                    status_code=500,
+                    detail="AI returned an empty response. Please try again."
+                )
 
-            response_text = result["answer"].strip()
+            response_text = result.strip()
 
             try:
                 batch_questions = _parse_questions(response_text)
-            except json.JSONDecodeError:
-                print(f"[MOCKTEST PARSE FAIL] Response length: {len(response_text)} chars", flush=True)
-                print(f"[MOCKTEST PARSE FAIL] Full response:\n{response_text}", flush=True)
-                raise HTTPException(status_code=500, detail="Failed to parse questions. Please try again.")
 
-            # IDs ko batches ke beech continuous rakhne ke liye re-number karo
+            except json.JSONDecodeError:
+                print(
+                    f"[MOCKTEST PARSE FAIL] "
+                    f"Response length: {len(response_text)} chars",
+                    flush=True,
+                )
+
+                print(
+                    f"[MOCKTEST PARSE FAIL] "
+                    f"Full response:\n{response_text}",
+                    flush=True,
+                )
+
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to parse questions. Please try again."
+                )
+
+            # Make sure we actually received a list
+            if not isinstance(batch_questions, list):
+                raise HTTPException(
+                    status_code=500,
+                    detail="AI returned an invalid question format."
+                )
+
+            # IDs ko batches ke beech continuous rakhna
             for q in batch_questions:
+                if not isinstance(q, dict):
+                    raise HTTPException(
+                        status_code=500,
+                        detail="AI returned an invalid question object."
+                    )
+
                 q["id"] = next_id
                 next_id += 1
 
             all_questions.extend(batch_questions)
-            total_tokens += result["tokens_used"]
+
+            # Current ask_raxx_ai() does not return token usage
+            total_tokens += 0
+
             remaining -= batch_count
 
         return {
@@ -131,9 +160,17 @@ def generate_test(req: MockTestRequest):
 
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
+    except Exception as e:
+        print(
+            f"[MOCKTEST ERROR] {type(e).__name__}: {e}",
+            flush=True,
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e),
+        )
 
 @router.post("/submit")
 def submit_test(req: SubmitTestRequest):
