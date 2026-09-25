@@ -1,555 +1,1061 @@
 # backend/utils/gemini_helper.py
-# RAXX AI — Central AI Helper via NVIDIA NIM API (Nemotron 3.5)
-# Now RAG-aware for the "doubt" feature: retrieves relevant chunks from the
-# knowledge base (built by the knowledge-pipeline tool) and grounds the
-# model's answer in them when available. Falls back to answering without
-# retrieval if nothing is found yet (e.g. before any content has been
-# ingested) — this never breaks the feature, it just doesn't get grounded
-# until content exists.
 
 import os
 import re
 import hashlib
+from typing import Optional
+
 from openai import OpenAI
+
 from supabase import create_client
-from utils.rag_retrieval import search_knowledge
-
-_cache_db = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_KEY"))
-
-# Sirf generic/factual features cache karo — career, studyplan, mocktest
-# NEVER cache karo kyunki wo student-specific (marks, name, weak subjects) hote hain
-CACHEABLE_FEATURES = {"doubt", "notes"}
+from backend.utils.rag_retrieval import search_knowledge
 
 
-def _make_cache_key(feature: str, board: str, grade: str, subject: str, question: str) -> str:
-    normalized = f"{feature}:{board}:{grade}:{subject}:{question.strip().lower()}"
-    return hashlib.sha256(normalized.encode()).hexdigest()
+# ============================================================
+# SUPABASE CACHE
+# ============================================================
+
+supabase = create_client(
+    os.getenv("SUPABASE_URL"),
+    os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
+)
 
 
-def _get_cached_answer(cache_key: str):
-    try:
-        result = _cache_db.table("ai_answer_cache").select("answer").eq("cache_key", cache_key).execute()
-        if result.data:
-            # Background mein hit_count/last_used update karo, response block mat karo
-            _cache_db.table("ai_answer_cache").update({
-                "last_used_at": "now()",
-            }).eq("cache_key", cache_key).execute()
-            return result.data[0]["answer"]
-    except Exception as e:
-        print(f"[CACHE] Read failed (non-fatal): {e}", flush=True)
-    return None
+# ============================================================
+# CACHE CONFIG
+# ============================================================
+
+CACHEABLE_FEATURES = {
+    "doubt",
+    "notes",
+}
 
 
-def _save_to_cache(cache_key: str, feature: str, answer: str):
-    try:
-        _cache_db.table("ai_answer_cache").upsert({
-            "cache_key": cache_key,
-            "feature": feature,
-            "answer": answer,
-        }).execute()
-    except Exception as e:
-        print(f"[CACHE] Write failed (non-fatal): {e}", flush=True)
+# ============================================================
+# GROQ CLIENT
+# ============================================================
 
-def get_nvidia_client():
+def get_groq_client():
+    """
+    Groq OpenAI-compatible client.
+    """
+
+    api_key = os.getenv("GROQ_API_KEY")
+
+    if not api_key:
+        raise RuntimeError(
+            "GROQ_API_KEY is not configured in environment variables."
+        )
+
     return OpenAI(
-        base_url=os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1"),
-        api_key=os.getenv("NVIDIA_API_KEY"),
-        timeout=35.0,   # cron keep-warm lagane ke baad cold-start khatam,
-                        # isliye ye sirf genuine NVIDIA slowness ke liye hai
+        base_url=os.getenv(
+            "GROQ_BASE_URL",
+            "https://api.groq.com/openai/v1",
+        ),
+        api_key=api_key,
+        timeout=35.0,
         max_retries=1,
     )
 
-# Update this if NVIDIA renames/updates the model string later
-MODEL_NAME = "nvidia/nemotron-3.5-lightning-30b-a3b"
 
-# Ye features ke liye Nemotron ka chain-of-thought reasoning off kar dete hain
-# taaki jawab jaldi aaye. RAG grounding (doubt feature ke liye) is switch se
-# bilkul independent hai — wo hamesha chalta rahega chahe reasoning on ho ya off
-# "doubt" aur "notes" yahan se jaan-bujh kar hataye gaye hain — ye free-form
-# conversational answers hain, aur reasoning off karne se model apni internal
-# "soch" (question restate + self-checklist) seedha visible answer mein leak
-# kar deta tha, aur facts pe zyada confidently galat bhi ho jata tha.
-# mocktest/career/studyplan JSON-schema-constrained hain isliye wahan safe hai.
-FAST_FEATURES = {"mocktest", "career", "studyplan"}
+# ============================================================
+# MODEL
+# ============================================================
 
-# doubt/notes ke liye pehle poora reasoning OFF tha (jisse checklist leak
-# hoti thi), phir poora UNBOUNDED kar diya (jisse 194 second tak lag gaye).
-# Sahi balance: capped reasoning — model thoda soch sake (facts sahi ho,
-# khud-checklist na likhe) lekin ek hard token limit ke andar hi rahe.
-LIGHT_REASONING_FEATURES = {"doubt", "notes"}
+MODEL_NAME = "openai/gpt-oss-120b"
+
+
+# ============================================================
+# FEATURE CONFIG
+# ============================================================
+
+FAST_FEATURES = {
+    "mocktest",
+    "career",
+    "studyplan",
+}
+
+LIGHT_REASONING_FEATURES = {
+    "doubt",
+    "notes",
+    "syllabus",
+}
+
+
+# ============================================================
+# RAG CONFIG
+# ============================================================
+
+# Features where database knowledge retrieval is useful.
+RAG_FEATURES = {
+    "doubt",
+    "notes",
+    "syllabus",
+}
+
+
+# ============================================================
+# SYSTEM PROMPT
+# ============================================================
 
 RAXX_SYSTEM_PROMPT = """
-You are RAXX AI, India's smartest AI study assistant — built for every Indian student
-from Class 6 to competitive exams (JEE, NEET, UPSC, SSC, Railway).
+You are RAXX AI, an Indian educational AI assistant.
 
-## PERSONALITY
-- Talk like a friendly, encouraging teacher — warm, motivating, never robotic.
-- Explain in natural Hinglish (Hindi + English mix) — the way a real tutor talks
-  to a student, not textbook language.
-- Use real Indian examples where they help (cricket, chai, Indian cities, festivals).
-- Use emojis occasionally to keep it friendly — don't overdo it.
-- NEVER start your answer with a greeting like "Namaste", "Hello", "Hi", or any
-  opening line before getting to the actual content. Jump straight into answering
-  the question — no preamble, no greeting, no "great question!" filler. Start
-  directly with the explanation itself.
-- NEVER restate, quote, or paraphrase the student's question back to them before
-  answering (e.g. never write things like "Student ne poocha '...' — sahi sawal
-  hai!" or "Sup! Main RAXX AI, student ne pucha..."). Never refer to yourself in
-  third person or describe what you're about to do. Just answer directly.
-- NEVER include any meta-commentary, self-checklist, or notes about whether you
-  followed your own instructions (e.g. "All requirements met ✓", "The answer is
-  ready ✅"). The student must only ever see the direct answer — nothing about
-  your internal process, reasoning, or rule-checking should appear in the output.
-- If the same student asks a related but DIFFERENT question than before (e.g.
-  they ask for "important questions" on a topic after you already explained the
-  concept), answer the NEW specific request — do not just repeat your earlier
-  explanation verbatim.
+You help students with:
+* School subjects
+* Engineering
+* NEET
+* UPSC
+* SSC
+* Railway
+* Banking
+* Coding
+* Career guidance
+* Study planning
 
+Language:
+* Understand English, Hindi and Hinglish.
+* Reply naturally in the student's language.
+* If the student uses Hinglish, prefer clear Hinglish.
 
-## ACCURACY & HONESTY
-- Never give wrong information. If you're not sure about something, say so clearly
-  instead of guessing confidently.
-- Engineering/university subjects (like DSTL, Automata Theory, DSA) have unit-wise
-  syllabus that varies A LOT between different universities and colleges in India.
-  If a student names a specific subject/unit and you're not fully certain of the
-  exact syllabus breakdown for their university, say so honestly and ask which
-  university or curriculum they're following, rather than confidently stating a
-  syllabus structure that might be wrong for their course.
-- NEVER assume or invent details the student hasn't told you — their class, year,
-  background, name, previous conversation, anything. Only use what's actually in
-  this conversation or in the REFERENCE MATERIAL below. If you don't know something
-  about the student, just answer their question directly without referencing
-  assumed context.
+PERSONALITY:
+* Friendly
+* Clear
+* Encouraging
+* Accurate
+* Student-focused
+* Never unnecessarily verbose
 
-## HOW TO EXPLAIN
-- Explain step by step, but let it flow naturally like a teacher talking out loud —
-  NEVER use mechanical labels like "Step 1:", "Step 2:", "Step 3:". Instead use
-  natural spoken transitions: "Pehle samajhte hain...", "Ab isके baad...", "Phir...",
-  "Iske baad dekhte hain...", "Aakhir mein...".
-- Relate explanations to the student's board/exam context (UP Board, CBSE, ICSE,
-  JEE, NEET, UPSC) when relevant.
-- Keep answers concise but complete — don't pad with unnecessary text, don't cut
-  important content short either.
+ACCURACY:
+* Do not invent facts.
+* Do not fabricate chapters, syllabus topics, books, exam patterns,
+  formulas or references.
+* If you are uncertain, clearly say so.
+* Prefer information supplied in REFERENCE MATERIAL when it is relevant.
 
-## FORMATTING — IMPORTANT (applies to ALL features, including notes)
-- Write like a chat message from a teacher, NOT a formal report, article, or PDF.
-- STRICTLY AVOID: "#", "##", "###" markdown headers, "---" horizontal dividers,
-  markdown tables (| col | col |), emoji used as section markers (📘, ✅❌, 2️⃣3️⃣),
-  and excessive bold text.
-- Even for notes or structured content, organize using plain text section labels
-  followed by a colon (e.g. "Key Concepts:" not "### Key Concepts") and simple
-  bullet points (•) or numbered lists (1. 2. 3.) — never tables, never emoji-numbered
-  headers, never horizontal rule dividers.
-- Bold text only for genuinely key terms/formulas, used sparingly — not entire lines.
-- Short paragraphs and clean spacing. The output should look like a well-organized
-  chat message, not a formatted document or slide deck.
+EDUCATIONAL STYLE:
+* Explain concepts step-by-step.
+* Use examples when useful.
+* Use formulas where appropriate.
+* For numerical problems, show the calculation clearly.
+* Keep explanations understandable for the student's level.
 
-## GROUNDING IN REFERENCE MATERIAL
-- If REFERENCE MATERIAL is provided below, it comes from RAXX AI's verified,
-  curated knowledge base — treat it as the most trustworthy source available.
-- Prioritize REFERENCE MATERIAL over your own general knowledge. Do not contradict
-  it. If it fully answers the question, base your entire answer on it and mention
-  the source naturally (e.g. "Source: NCERT Class 10 Maths, Real Numbers").
-- If REFERENCE MATERIAL is present but doesn't fully cover the question, use it
-  for what it covers and fill the rest from your own knowledge — but don't claim
-  a source for the part that isn't grounded.
-- If no REFERENCE MATERIAL is provided, answer from your own knowledge as usual,
-  without claiming any source.
-"""
+FORMATTING:
+* Use Markdown when useful.
+* Use headings for long answers.
+* Use bullet points for lists.
+* Use numbered steps for procedures.
+* Use LaTeX for mathematical formulas when appropriate.
 
-SYLLABUS_CONTEXT = """
-BOARDS COVERED: UP Board, CBSE, ICSE, MP Board, Bihar Board, Rajasthan Board, Maharashtra Board
+DATABASE GROUNDING:
 
-CLASS 10 SCIENCE: Chemical Reactions, Acids Bases Salts, Metals Non-metals,
-Carbon Compounds, Life Processes, Control and Coordination, Heredity Evolution,
-Light Reflection Refraction, Human Eye, Electricity, Magnetic Effects, Energy Sources
+When REFERENCE MATERIAL is provided:
 
-CLASS 10 MATHEMATICS: Real Numbers, Polynomials, Linear Equations, Quadratic Equations,
-Arithmetic Progressions, Triangles, Coordinate Geometry, Trigonometry,
-Surface Areas Volumes, Statistics, Probability
+1. Treat it as the source of truth for information stored in
+   the RAXX AI knowledge base.
 
-CLASS 12 PHYSICS: Electrostatics, Current Electricity, Magnetic Effects,
-Electromagnetic Induction, Optics, Modern Physics, Semiconductor Electronics
+2. This especially applies to questions about:
+   - RAXX syllabus
+   - Chapters
+   - Topics
+   - Curriculum
+   - Stored books
+   - Stored study material
+   - Knowledge-base content
+   - Board-specific content
 
-CLASS 12 CHEMISTRY: Solid State, Solutions, Electrochemistry, Chemical Kinetics,
-Surface Chemistry, p-block, d-block Elements, Coordination Compounds, Biomolecules
+3. Do not replace database content with your own assumed syllabus.
 
-CLASS 12 MATHEMATICS: Relations Functions, Inverse Trigonometry, Matrices,
-Determinants, Continuity Differentiability, Integrals, Differential Equations,
-Vectors, 3D Geometry, Linear Programming, Probability
+4. Do not invent missing chapters or topics.
 
-CLASS 12 BIOLOGY: Reproduction, Genetics Evolution, Biology Human Welfare,
-Biotechnology, Ecology Environment
+5. If the requested information is not present in the
+   REFERENCE MATERIAL, clearly say that it was not found
+   in the available RAXX knowledge base.
 
-ENGINEERING: CSE, ECE, MECHANICAL, CIVIL, ELECTRICAL
-MEDICAL: MBBS, NEET UG, NEET PG
-GOVERNMENT EXAMS: UPSC, SSC, Railway, Banking
-CODING: C, C++, Python, Java, JavaScript
+6. Do not claim that something is stored in the database unless
+   it is actually present in the provided REFERENCE MATERIAL.
+
+IMPORTANT:
+The database retrieval is more authoritative than your general
+knowledge when the student asks about RAXX's stored educational content.
 """
 
 
-import re as _re
+# ============================================================
+# JSON REPAIR
+# ============================================================
 
 def _repair_malformed_json(text: str) -> str:
     """
-    Fixes a common AI bug where array string items get written as
-    key:value pairs instead of plain strings, e.g.:
-        "Step 4 - First job": "Junior Developer role",
-    should just be:
-        "Step 4 - First job: Junior Developer role",
-    Only touches pairs whose "key" is NOT one of our known real JSON keys —
-    so actual object fields (title, emoji, description, etc.) are untouched.
+    Attempts to clean common malformed JSON responses.
     """
-    known_keys = {
-        "careers", "title", "emoji", "description", "why_suits", "key_exams",
-        "top_colleges", "salary_range", "growth", "roadmap",
-        "overview", "total_days", "daily_hours", "tip", "days", "day",
-        "date_label", "focus", "tasks", "time", "subject", "topic", "type",
-        "duration", "revision", "motivation", "questions", "question",
-        "options", "answer", "explanation",
-    }
 
-    pattern = _re.compile(r'"([^"]+)":\s*"([^"]*)"(?=\s*[,\]\n])')
+    if not text:
+        return text
 
-    def merge_safe(match):
-        key, value = match.group(1), match.group(2)
-        if key in known_keys:
-            return match.group(0)
-        return f'"{key}: {value}"'
+    text = text.strip()
 
-    return pattern.sub(merge_safe, text)
+    # Remove markdown code fences
+    text = re.sub(r"^```json\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"^```\s*", "", text)
+    text = re.sub(r"\s*```$", "", text)
+
+    return text.strip()
 
 
-def _build_rag_context(question: str, board: str, grade: str, subject: str = ""):
-    """
-    Tries to retrieve relevant knowledge-base chunks for a school-level doubt.
-    Returns a formatted context string, or "" if nothing relevant was found
-    (e.g. content not ingested for this topic yet, or GEMINI_API_KEY not set).
-    """
-    level = None
-    if grade and str(grade).strip().isdigit():
-        level = f"class-{grade}"
+# ============================================================
+# CACHE KEY
+# ============================================================
 
-    chunks = search_knowledge(
-        query=question,
-        category="school",
-        level=level,
-        subject=subject.lower() if subject else None,
-        top_k=4,
+def _make_cache_key(
+    feature: str,
+    question: str,
+    board: Optional[str] = None,
+    grade: Optional[str] = None,
+    subject: Optional[str] = None,
+) -> str:
+
+    raw = "|".join(
+        [
+            feature or "",
+            question or "",
+            board or "",
+            str(grade or ""),
+            subject or "",
+        ]
     )
 
-    if not chunks:
+    return hashlib.sha256(
+        raw.encode("utf-8")
+    ).hexdigest()
+
+
+# ============================================================
+# CACHE GET
+# ============================================================
+
+def _get_cached_response(cache_key: str):
+
+    try:
+        result = (
+            supabase
+            .table("ai_response_cache")
+            .select("response")
+            .eq("cache_key", cache_key)
+            .limit(1)
+            .execute()
+        )
+
+        if result.data:
+            return result.data[0].get("response")
+
+    except Exception:
+        # Cache failure should never break AI generation.
+        pass
+
+    return None
+
+
+# ============================================================
+# CACHE SET
+# ============================================================
+
+def _set_cached_response(
+    cache_key: str,
+    response: str,
+):
+
+    try:
+        (
+            supabase
+            .table("ai_response_cache")
+            .upsert(
+                {
+                    "cache_key": cache_key,
+                    "response": response,
+                }
+            )
+            .execute()
+        )
+
+    except Exception:
+        # Cache failure should never break AI generation.
+        pass
+
+
+# ============================================================
+# RAG RETRIEVAL
+# ============================================================
+
+def _build_rag_context(
+    question: str,
+    board: Optional[str],
+    grade: Optional[str],
+    subject: str = "",
+    top_k: int = 6,
+) -> str:
+    """
+    Retrieve relevant knowledge from Supabase pgvector.
+
+    The generation model does NOT directly query the database.
+    This function retrieves relevant chunks and injects them
+    into the model context.
+    """
+
+    try:
+
+        level = None
+
+        if grade:
+            grade_str = str(grade).strip()
+
+            if grade_str.isdigit():
+                level = f"class-{grade_str}"
+            else:
+                level = grade_str.lower()
+
+        results = search_knowledge(
+            query=question,
+            category="school",
+            level=level,
+            subject=subject.lower().strip() if subject else None,
+            top_k=top_k,
+        )
+
+        if not results:
+            return ""
+
+        formatted_chunks = []
+
+        for item in results:
+
+            title = (
+                item.get("title")
+                or item.get("name")
+                or "Knowledge Chunk"
+            )
+
+            content = (
+                item.get("content")
+                or item.get("text")
+                or ""
+            )
+
+            if not content:
+                continue
+
+            formatted_chunks.append(
+                f"[{title}]\n{content}"
+            )
+
+        if not formatted_chunks:
+            return ""
+
+        return (
+            "\n\n"
+            "==============================\n"
+            "REFERENCE MATERIAL FROM RAXX DATABASE\n"
+            "==============================\n\n"
+            + "\n\n---\n\n".join(formatted_chunks)
+            + "\n\n"
+            "==============================\n"
+            "END REFERENCE MATERIAL\n"
+            "==============================\n"
+        )
+
+    except Exception as e:
+
+        print(
+            f"[RAG] Retrieval failed: {e}"
+        )
+
         return ""
 
-    parts = []
-    for c in chunks:
-        title = c.get("title", "Untitled")
-        content = c.get("content", "")
-        parts.append(f"[{title}]\n{content}")
 
-    return "\n\n---\n\nREFERENCE MATERIAL (from RAXX AI's verified knowledge base):\n\n" + "\n\n---\n\n".join(parts)
+# ============================================================
+# MESSAGE BUILDER
+# ============================================================
 
+def _build_messages(
+    full_prompt: str,
+    history=None,
+):
 
-def _build_messages(system_prompt: str, full_prompt: str, history: list = None) -> list:
-    """
-    History ko chat messages me convert karta hai — sirf last 2 Q&A pairs,
-    har turn 800 characters tak capped (token cost control ke liye).
-    """
-    messages = [{"role": "system", "content": system_prompt}]
+    messages = [
+        {
+            "role": "system",
+            "content": RAXX_SYSTEM_PROMPT,
+        }
+    ]
+
+    # Keep only recent conversation context.
     if history:
-        for turn in history[-2:]:
-            q = (turn.get("question") or "").strip()[:800]
-            a = (turn.get("answer") or "").strip()[:800]
-            if q:
-                messages.append({"role": "user", "content": q})
-            if a:
-                messages.append({"role": "assistant", "content": a})
-    messages.append({"role": "user", "content": full_prompt})
+
+        recent_history = history[-2:]
+
+        for item in recent_history:
+
+            if not isinstance(item, dict):
+                continue
+
+            user_message = (
+                item.get("question")
+                or item.get("user")
+                or item.get("content")
+            )
+
+            assistant_message = (
+                item.get("answer")
+                or item.get("assistant")
+                or item.get("response")
+            )
+
+            if user_message:
+
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": str(user_message)[:800],
+                    }
+                )
+
+            if assistant_message:
+
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "content": str(assistant_message)[:800],
+                    }
+                )
+
+    messages.append(
+        {
+            "role": "user",
+            "content": full_prompt,
+        }
+    )
+
     return messages
 
+
+# ============================================================
+# FEATURE PROMPTS
+# ============================================================
+
+def _get_feature_instruction(
+    feature: str,
+) -> str:
+
+    feature = (feature or "doubt").lower()
+
+    if feature == "doubt":
+
+        return """
+Answer the student's doubt accurately.
+
+If REFERENCE MATERIAL is available and relevant,
+use it as the primary source for RAXX-specific content.
+
+Explain the answer step-by-step when useful.
+"""
+
+    if feature == "notes":
+
+        return """
+Create clear and useful study notes.
+
+If REFERENCE MATERIAL is provided, use it as the
+primary source for the requested RAXX knowledge.
+
+Do not add invented chapters or topics.
+"""
+
+    if feature == "syllabus":
+
+        return """
+The student is asking about syllabus/curriculum information.
+
+IMPORTANT:
+If REFERENCE MATERIAL is available, answer from that material.
+
+The student may specifically be asking:
+"What syllabus is stored in the RAXX database?"
+
+In that case:
+* Return the information actually present in REFERENCE MATERIAL.
+* Organize it clearly.
+* Mention class, subject, board or chapter information
+  when those details are available.
+* Do not substitute a generic syllabus from your own knowledge.
+* Do not invent missing chapters.
+* If the relevant syllabus is not found in REFERENCE MATERIAL,
+  say that it was not found in the available RAXX knowledge base.
+"""
+
+    if feature == "mocktest":
+
+        return """
+Generate a useful educational mock test based on the student's request.
+
+Return valid JSON if the application expects JSON output.
+
+Do not invent database-specific syllabus information
+unless it is provided in REFERENCE MATERIAL.
+"""
+
+    if feature == "studyplan":
+
+        return """
+Create a practical study plan based on the student's request.
+
+Keep it realistic and student-friendly.
+"""
+
+    if feature == "career":
+
+        return """
+Provide clear educational and career guidance.
+
+Separate factual information from suggestions.
+Do not present uncertain information as fact.
+"""
+
+    if feature == "code_review":
+
+        return """
+Review the supplied code carefully.
+
+Identify:
+* Bugs
+* Logic issues
+* Security problems
+* Performance concerns
+* Maintainability issues
+
+Give practical fixes.
+"""
+
+    if feature == "scholarship":
+
+        return """
+Provide factual scholarship-related guidance.
+
+Do not invent eligibility requirements,
+deadlines or scholarship details.
+"""
+
+    if feature == "predictor":
+
+        return """
+Provide a careful prediction/analysis based only on
+the information supplied by the student.
+
+Clearly distinguish estimates from facts.
+"""
+
+    return """
+Answer the student's question clearly and accurately.
+"""
+
+
+# ============================================================
+# RAG DECISION
+# ============================================================
+
+def _should_use_rag(
+    feature: str,
+    question: str,
+) -> bool:
+    """
+    Decide whether this request should retrieve knowledge
+    from the RAXX database.
+    """
+
+    feature = (feature or "").lower()
+
+    if feature in RAG_FEATURES:
+        return True
+
+    # Knowledge-base / syllabus style questions can still
+    # benefit from retrieval even if another feature name
+    # reaches this function.
+    knowledge_keywords = [
+        "syllabus",
+        "chapter",
+        "chapters",
+        "topic",
+        "topics",
+        "curriculum",
+        "book",
+        "books",
+        "database",
+        "db",
+        "stored",
+        "knowledge base",
+        "knowledgebase",
+    ]
+
+    question_lower = (question or "").lower()
+
+    return any(
+        keyword in question_lower
+        for keyword in knowledge_keywords
+    )
+
+
+# ============================================================
+# REASONING CONFIG
+# ============================================================
+
+def _get_reasoning_config(
+    feature: str,
+):
+
+    feature = (feature or "").lower()
+
+    # Fast generation for structured/simple features.
+    if feature in FAST_FEATURES:
+
+        return {
+            "reasoning_effort": "low",
+            "include_reasoning": False,
+            "max_completion_tokens": 14000,
+        }
+
+    # Light reasoning for educational answers.
+    return {
+        "reasoning_effort": "low",
+        "include_reasoning": False,
+        "max_completion_tokens": 4000,
+    }
+
+
+# ============================================================
+# THINK TAG CLEANUP
+# ============================================================
+
+def _strip_thinking(text: str) -> str:
+
+    if not text:
+        return ""
+
+    text = re.sub(
+        r"<think>.*?</think>",
+        "",
+        text,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
+
+    return text.strip()
+
+
+# ============================================================
+# MAIN NON-STREAMING FUNCTION
+# ============================================================
 
 def ask_raxx_ai(
     question: str,
     feature: str = "doubt",
-    language: str = "Hindi",
-    board: str = "CBSE",
-    grade: str = "12",
+    board: Optional[str] = None,
+    grade: Optional[str] = None,
     subject: str = "",
-    extra_context: str = "",
-    history: list = None
-) -> dict:
+    history=None,
+):
 
-    feature_prompts = {
-        "doubt": f"Ek student ne doubt pucha hai. Class: {grade}, Language: {language}. Concept ko clearly, ek teacher jaisi natural tarike se samjhao — bina 'Step 1, Step 2' jaisi mechanical numbering ke. Agar student ne apne question mein khud kisi specific board ya exam (jaise JEE, NEET, UPSC, CBSE, ICSE) ka naam liya hai, to usी context ke hisaab se jawab do. Warna board ya exam ka koi bhi zikra mat karo — bas seedha concept explain karo, jaise koi general acha teacher karta hai.",
-        "notes": f"Is topic ke liye clean exam-ready notes banao. Board: {board}, Class: {grade}. Key Points, Definitions, Formulas, Exam Tips include karo — lekin plain, simple formatting mein (no markdown headers, no tables, no emoji-section-markers), jaise ek achha teacher apne haath se likhe hue clean notes deta hai.",
-        "mocktest": f"Board: {board}, Class: {grade} ke liye exam-relevant MCQs banao. Neeche diye gaye exact JSON format instructions follow karo — sirf wahi output karo, koi greeting, explanation, ya extra text mat likho.",
-        "studyplan": f"Exam: {board}, Class: {grade} ke liye detailed study plan banao. Neeche diye gaye exact JSON format instructions follow karo — sirf wahi output karo, koi greeting, explanation, ya extra text mat likho.",
-        "career": f"Class: {grade}, Board: {board} ke student ke liye career guidance do. Neeche diye gaye exact JSON format instructions follow karo — sirf wahi output karo, koi greeting ya extra text mat likho.",
-        "code_review": f"Is code ko review karo. Language: {language}. Kya sahi hai, kya improve ho sakta hai, optimized version do.",
-        "scholarship": f"Best government scholarships find karo. Board: {board}, Class: {grade}. Naam, eligibility, amount, process batao.",
-        "predictor": f"Topic-wise probability batao. Exam: {board}. HIGH CHANCE, MEDIUM CHANCE, LOW CHANCE format mein.",
-    }
+    question = (question or "").strip()
+    feature = (feature or "doubt").lower()
 
-    feature_instruction = feature_prompts.get(feature, feature_prompts["doubt"])
+    if not question:
+        return "Please provide a question."
 
-    if extra_context:
-        feature_instruction += f"\n\nExtra Context: {extra_context}"
 
-    # Cache check — sirf generic/factual features ke liye, history wali
-    # conversations ko skip karo kyunki wo context-dependent hoti hain
+    # --------------------------------------------------------
+    # CACHE
+    # --------------------------------------------------------
+
     cache_key = None
-    if feature in CACHEABLE_FEATURES and not history:
-        cache_key = _make_cache_key(feature, board, grade, subject, question)
-        cached = _get_cached_answer(cache_key)
-        if cached:
-            print(f"[CACHE] HIT for {feature}", flush=True)
-            return {
-                "success": True,
-                "answer": cached,
-                "tokens_used": 0,
-                "cache_created": 0,
-                "cache_read": 0,
-                "grounded": False,
-                "from_answer_cache": True,
-            }
 
-    # RAG: only wired for "doubt" right now. Other features still work exactly
-    # as before — extend this to more features once more content is ingested.
-    rag_context = ""
-    if feature == "doubt":
-        rag_context = _build_rag_context(question, board, grade, subject)
+    if (
+        feature in CACHEABLE_FEATURES
+        and not history
+    ):
 
-    import time
-    _t0 = time.time()
-
-    full_prompt = f"{SYLLABUS_CONTEXT}\n\n{feature_instruction}{rag_context}\n\nStudent Question: {question}"
-
-    print(f"[TIMING] RAG + prompt build took {time.time() - _t0:.2f}s", flush=True)
-
-    max_out_tokens = 4000
-    extra_body = {}
-    if feature in FAST_FEATURES:
-        extra_body = {
-            "chat_template_kwargs": {"enable_thinking": False},
-            "reasoning_budget": 0,
-        }
-        max_out_tokens = 14000
-    elif feature in LIGHT_REASONING_FEATURES:
-        extra_body = {
-            "chat_template_kwargs": {"enable_thinking": True},
-            "reasoning_budget": 400,   # hard cap — max ~400 reasoning tokens, phir forced answer
-        }
-        max_out_tokens = 4000
-
-    # JSON-structured features (mocktest/career) mein repetition penalty OFF —
-    # warna model field names/brackets/quotes repeat karne se bachne ki koshish
-    # karta hai (JSON mein wahi tokens baar-baar aate hain), aur isi wajah se
-    # beech mein hi generation rok deta hai ya JSON structure todh deta hai
-    freq_penalty = 0.0 if feature in {"mocktest", "career", "studyplan"} else 0.4
-    pres_penalty = 0.0 if feature in {"mocktest", "career", "studyplan"} else 0.2
-
-
-    try:
-        client = get_nvidia_client()
-
-        _t1 = time.time()
-        response = client.chat.completions.create(
-            model=MODEL_NAME,
-            max_tokens=max_out_tokens,
-            temperature=0.4,
-            frequency_penalty=freq_penalty,
-            presence_penalty=pres_penalty,
-            extra_body=extra_body,
-            messages=_build_messages(RAXX_SYSTEM_PROMPT, full_prompt, history),
+        cache_key = _make_cache_key(
+            feature=feature,
+            question=question,
+            board=board,
+            grade=grade,
+            subject=subject,
         )
 
-        choice = response.choices[0]
-        answer = choice.message.content
+        cached = _get_cached_response(
+            cache_key
+        )
 
-        # Agar model ne <think>...</think> tags content ke andar hi bhej diye,
-        # unko final answer se clean kar do
-        if answer:
-            answer = re.sub(r'<think>.*?</think>', '', answer, flags=re.DOTALL).strip()
-            # Agar <think> abhi bhi bacha hai matlab wo band hi nahi hua tha
-            # (max_tokens beech me hi truncate ho gaya) — aisa reasoning-garbage
-            # answer ke bajaye clean error dena behtar hai
-            if '<think>' in answer:
-                return {
-                    "success": False,
-                    "error": "Model response truncated during reasoning. Try again or increase max_tokens.",
-                }
+        if cached:
+            return cached
 
-        # Some Nemotron variants return separate "reasoning_content" (chain of
-        # thought). We deliberately drop it here — students should only see
-        # the final answer, never the model's internal reasoning trace.
-        # If you ever need it for debugging, it's at:
-        #   getattr(choice.message, "reasoning_content", None)
 
-        print(f"[TIMING] NVIDIA API call took {time.time() - _t1:.2f}s", flush=True)
+    # --------------------------------------------------------
+    # FEATURE INSTRUCTION
+    # --------------------------------------------------------
 
-        usage = response.usage
-        print(f"[TIMING] tokens_used = {usage.total_tokens if usage else 'N/A'} (prompt: {usage.prompt_tokens if usage else '?'}, completion: {usage.completion_tokens if usage else '?'})", flush=True)
+    feature_instruction = _get_feature_instruction(
+        feature
+    )
 
-        if cache_key and answer:
-            _save_to_cache(cache_key, feature, answer)
 
-        return {
-            "success": True,
-            "answer": answer,
-            "tokens_used": usage.total_tokens if usage else 0,
-            # NVIDIA NIM doesn't expose prompt-cache stats like Anthropic did,
-            # so these stay at 0. Safe to remove downstream if unused.
-            "cache_created": 0,
-            "cache_read": 0,
-            "grounded": bool(rag_context),
-        }
+    # --------------------------------------------------------
+    # RAG
+    # --------------------------------------------------------
 
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"AI Error: {str(e)}",
-        }
+    rag_context = ""
+
+    if _should_use_rag(
+        feature=feature,
+        question=question,
+    ):
+
+        rag_context = _build_rag_context(
+            question=question,
+            board=board,
+            grade=grade,
+            subject=subject,
+            top_k=8 if feature == "syllabus" else 6,
+        )
+
+
+    # --------------------------------------------------------
+    # FINAL PROMPT
+    # --------------------------------------------------------
+
+    full_prompt = (
+        f"{feature_instruction}\n\n"
+        f"{rag_context}\n\n"
+        f"Student Question: {question}"
+    )
+
+
+    # --------------------------------------------------------
+    # MESSAGES
+    # --------------------------------------------------------
+
+    messages = _build_messages(
+        full_prompt=full_prompt,
+        history=history,
+    )
+
+
+    # --------------------------------------------------------
+    # MODEL CONFIG
+    # --------------------------------------------------------
+
+    reasoning_config = _get_reasoning_config(
+        feature
+    )
+
+
+    # --------------------------------------------------------
+    # PENALTIES
+    # --------------------------------------------------------
+
+    # Keep JSON/structured features deterministic.
+    structured_features = {
+        "mocktest",
+        "studyplan",
+        "predictor",
+    }
+
+    frequency_penalty = (
+        0.0
+        if feature in structured_features
+        else 0.4
+    )
+
+
+    # --------------------------------------------------------
+    # GROQ CLIENT
+    # --------------------------------------------------------
+
+    client = get_groq_client()
+
+
+    # --------------------------------------------------------
+    # GENERATION
+    # --------------------------------------------------------
+
+    response = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=messages,
+
+        reasoning_effort=reasoning_config[
+            "reasoning_effort"
+        ],
+
+        include_reasoning=reasoning_config[
+            "include_reasoning"
+        ],
+
+        max_completion_tokens=reasoning_config[
+            "max_completion_tokens"
+        ],
+
+        temperature=0.2,
+
+        frequency_penalty=frequency_penalty,
+    )
+
+
+    # --------------------------------------------------------
+    # RESPONSE
+    # --------------------------------------------------------
+
+    answer = response.choices[0].message.content or ""
+
+    answer = _strip_thinking(answer)
+
+
+    # --------------------------------------------------------
+    # JSON CLEANUP
+    # --------------------------------------------------------
+
+    if feature in structured_features:
+
+        answer = _repair_malformed_json(
+            answer
+        )
+
+
+    # --------------------------------------------------------
+    # CACHE SAVE
+    # --------------------------------------------------------
+
+    if cache_key and answer:
+
+        _set_cached_response(
+            cache_key=cache_key,
+            response=answer,
+        )
+
+
+    return answer
+
+
+# ============================================================
+# STREAMING FUNCTION
+# ============================================================
 
 def ask_raxx_ai_stream(
     question: str,
     feature: str = "doubt",
-    language: str = "Hindi",
-    board: str = "CBSE",
-    grade: str = "12",
+    board: Optional[str] = None,
+    grade: Optional[str] = None,
     subject: str = "",
-    extra_context: str = "",
-    history: list = None
+    history=None,
 ):
-    """
-    Same as ask_raxx_ai() but streams the answer token-by-token instead of
-    waiting for the full response. Yields plain text chunks.
-    """
-    feature_prompts = {
-        "doubt": f"Ek student ne doubt pucha hai. Class: {grade}, Language: {language}. Concept ko clearly, ek teacher jaisi natural tarike se samjhao — bina 'Step 1, Step 2' jaisi mechanical numbering ke. Agar student ne apne question mein khud kisi specific board ya exam (jaise JEE, NEET, UPSC, CBSE, ICSE) ka naam liya hai, to usी context ke hisaab se jawab do. Warna board ya exam ka koi bhi zikra mat karo — bas seedha concept explain karo, jaise koi general acha teacher karta hai.",
-        "notes": f"Is topic ke liye clean exam-ready notes banao. Board: {board}, Class: {grade}. Key Points, Definitions, Formulas, Exam Tips include karo — lekin plain, simple formatting mein (no markdown headers, no tables, no emoji-section-markers), jaise ek achha teacher apne haath se likhe hue clean notes deta hai.",
-        "mocktest": f"Board: {board}, Class: {grade} ke liye exam-relevant MCQs banao. Neeche diye gaye exact JSON format instructions follow karo — sirf wahi output karo, koi greeting, explanation, ya extra text mat likho.",
-        "studyplan": f"Exam: {board}, Class: {grade} ke liye detailed study plan banao. Neeche diye gaye exact JSON format instructions follow karo — sirf wahi output karo, koi greeting, explanation, ya extra text mat likho.",
-        "career": f"Class: {grade}, Board: {board} ke student ke liye career guidance do. Neeche diye gaye exact JSON format instructions follow karo — sirf wahi output karo, koi greeting ya extra text mat likho.",
-        "code_review": f"Is code ko review karo. Language: {language}. Kya sahi hai, kya improve ho sakta hai, optimized version do.",
-        "scholarship": f"Best government scholarships find karo. Board: {board}, Class: {grade}. Naam, eligibility, amount, process batao.",
-        "predictor": f"Topic-wise probability batao. Exam: {board}. HIGH CHANCE, MEDIUM CHANCE, LOW CHANCE format mein.",
-    }
 
-    feature_instruction = feature_prompts.get(feature, feature_prompts["doubt"])
-    if extra_context:
-        feature_instruction += f"\n\nExtra Context: {extra_context}"
+    question = (question or "").strip()
+    feature = (feature or "doubt").lower()
 
-    # Cache check — hit hone par saved answer ko chunks mein todh ke
-    # "stream jaisa" bhej do, taaki frontend ka behavior same rahe
+    if not question:
+        yield "Please provide a question."
+        return
+# --------------------------------------------------------
+    # CACHE
+    # --------------------------------------------------------
+
     cache_key = None
-    if feature in CACHEABLE_FEATURES and not history:
-        cache_key = _make_cache_key(feature, board, grade, subject, question)
-        cached = _get_cached_answer(cache_key)
+
+    if (
+        feature in CACHEABLE_FEATURES
+        and not history
+    ):
+
+        cache_key = _make_cache_key(
+            feature=feature,
+            question=question,
+            board=board,
+            grade=grade,
+            subject=subject,
+        )
+
+        cached = _get_cached_response(
+            cache_key
+        )
+
         if cached:
-            print(f"[CACHE-STREAM] HIT for {feature}", flush=True)
-            words = cached.split(" ")
-            for i in range(0, len(words), 6):
-                yield " ".join(words[i:i+6]) + " "
+            yield cached
             return
 
+
+    # --------------------------------------------------------
+    # FEATURE INSTRUCTION
+    # --------------------------------------------------------
+
+    feature_instruction = _get_feature_instruction(
+        feature
+    )
+
+
+    # --------------------------------------------------------
+    # RAG
+    # --------------------------------------------------------
+
     rag_context = ""
-    if feature == "doubt":
-        rag_context = _build_rag_context(question, board, grade, subject)
 
-    import time
-    _t0 = time.time()
-    _full_answer_parts = []
+    if _should_use_rag(
+        feature=feature,
+        question=question,
+    ):
 
-    full_prompt = f"{SYLLABUS_CONTEXT}\n\n{feature_instruction}{rag_context}\n\nStudent Question: {question}"
-
-    print(f"[TIMING-STREAM] RAG + prompt build took {time.time() - _t0:.2f}s", flush=True)
-
-    max_out_tokens = 4000
-    extra_body = {}
-    if feature in FAST_FEATURES:
-        extra_body = {
-            "chat_template_kwargs": {"enable_thinking": False},
-            "reasoning_budget": 0,
-        }
-        max_out_tokens = 14000 if feature in {"mocktest", "career", "studyplan"} else 4000
-
-    freq_penalty = 0.0 if feature in {"mocktest", "career", "studyplan"} else 0.4
-    pres_penalty = 0.0 if feature in {"mocktest", "career", "studyplan"} else 0.2
-
-    client = get_nvidia_client()
-
-    _t1 = time.time()
-    _first_chunk_logged = False
-
-    try:
-        stream = client.chat.completions.create(
-            model=MODEL_NAME,
-            max_tokens=max_out_tokens,
-            temperature=0.4,
-            frequency_penalty=freq_penalty,
-            presence_penalty=pres_penalty,
-            extra_body=extra_body,
-            messages=_build_messages(RAXX_SYSTEM_PROMPT + "\n\n" + SYLLABUS_CONTEXT, full_prompt, history),
-            stream=True,
+        rag_context = _build_rag_context(
+            question=question,
+            board=board,
+            grade=grade,
+            subject=subject,
+            top_k=8 if feature == "syllabus" else 6,
         )
-    except Exception as e:
-        print(f"[TIMING-STREAM] API call failed to start: {type(e).__name__}: {e}", flush=True)
-        yield "⚠️ RAXX abhi thoda busy hai, server pe load zyada hai. Please 10-15 second baad dobara try karo."
-        return
 
-    print(f"[TIMING-STREAM] client.create() call setup took {time.time() - _t1:.2f}s", flush=True)
-    # Agar model beech-beech mein <think>...</think> bhejta hai, usko user
-    # tak pohochne se pehle hi filter kar do
-    buffer = ""
-    inside_think = False
 
-    try:
-     for chunk in stream:
-        if not chunk.choices:
+    # --------------------------------------------------------
+    # FINAL PROMPT
+    # --------------------------------------------------------
+
+    full_prompt = (
+        f"{feature_instruction}\n\n"
+        f"{rag_context}\n\n"
+        f"Student Question: {question}"
+    )
+
+
+    # --------------------------------------------------------
+    # MESSAGES
+    # --------------------------------------------------------
+
+    messages = _build_messages(
+        full_prompt=full_prompt,
+        history=history,
+    )
+
+
+    # --------------------------------------------------------
+    # MODEL CONFIG
+    # --------------------------------------------------------
+
+    reasoning_config = _get_reasoning_config(
+        feature
+    )
+
+
+    structured_features = {
+        "mocktest",
+        "studyplan",
+        "predictor",
+    }
+
+    frequency_penalty = (
+        0.0
+        if feature in structured_features
+        else 0.4
+    )
+
+
+    # --------------------------------------------------------
+    # GROQ CLIENT
+    # --------------------------------------------------------
+
+    client = get_groq_client()
+
+
+    # --------------------------------------------------------
+    # STREAM
+    # --------------------------------------------------------
+
+    stream = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=messages,
+
+        reasoning_effort=reasoning_config[
+            "reasoning_effort"
+        ],
+
+        include_reasoning=reasoning_config[
+            "include_reasoning"
+        ],
+
+        max_completion_tokens=reasoning_config[
+            "max_completion_tokens"
+        ],
+
+        temperature=0.2,
+
+        frequency_penalty=frequency_penalty,
+
+        stream=True,
+    )
+
+
+    # --------------------------------------------------------
+    # COLLECT RESPONSE FOR CACHE
+    # --------------------------------------------------------
+
+    collected = []
+
+
+    # --------------------------------------------------------
+    # STREAM CHUNKS
+    # --------------------------------------------------------
+
+    for chunk in stream:
+
+        try:
+            delta = chunk.choices[0].delta
+
+            content = getattr(
+                delta,
+                "content",
+                None,
+            )
+
+            if not content:
+                continue
+
+            content = _strip_thinking(
+                content
+            )
+
+            if not content:
+                continue
+
+            collected.append(content)
+
+            yield content
+
+        except Exception:
             continue
-        delta = chunk.choices[0].delta.content
-        if not delta:
-            continue
 
-        if not _first_chunk_logged:
-            print(f"[TIMING-STREAM] First chunk received after {time.time() - _t1:.2f}s (from stream start)", flush=True)
-            _first_chunk_logged = True
 
-        buffer += delta
+    # --------------------------------------------------------
+    # CACHE COMPLETE RESPONSE
+    # --------------------------------------------------------
 
-        while True:
-            if inside_think:
-                end_idx = buffer.find("</think>")
-                if end_idx == -1:
-                    buffer = ""
-                    break
-                buffer = buffer[end_idx + len("</think>"):]
-                inside_think = False
-            else:
-                start_idx = buffer.find("<think>")
-                if start_idx == -1:
-                    if buffer:
-                        yield buffer
-                        _full_answer_parts.append(buffer)
-                    buffer = ""
-                    break
-                if start_idx > 0:
-                    yield buffer[:start_idx]
-                    _full_answer_parts.append(buffer[:start_idx])
-                buffer = buffer[start_idx + len("<think>"):]
-                inside_think = True
+    final_answer = "".join(
+        collected
+    ).strip()
 
-    except Exception as e:
-        print(f"[TIMING-STREAM] Stream interrupted: {type(e).__name__}: {e}", flush=True)
-        if not _full_answer_parts:
-            yield "\n\n⚠️ Connection beech mein toot gaya. Please dobara try karo."
-        return
 
-    if buffer and not inside_think:
-        yield buffer
-        _full_answer_parts.append(buffer)
+    if structured_features:
 
-    if cache_key and _full_answer_parts:
-        _save_to_cache(cache_key, feature, "".join(_full_answer_parts))
+        final_answer = _repair_malformed_json(
+            final_answer
+        )
 
-    print(f"[TIMING-STREAM] Total stream duration: {time.time() - _t1:.2f}s", flush=True)
+
+    if cache_key and final_answer:
+
+        _set_cached_response(
+            cache_key=cache_key,
+            response=final_answer,
+        )
+
+    
