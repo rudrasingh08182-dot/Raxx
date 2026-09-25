@@ -8,7 +8,7 @@ from typing import Optional
 from openai import OpenAI
 
 from supabase import create_client
-from backend.utils.rag_retrieval import search_knowledge
+from utils.rag_retrieval import search_knowledge
 
 
 # ============================================================
