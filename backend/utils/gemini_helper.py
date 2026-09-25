@@ -105,11 +105,13 @@ GENERAL RULES:
   reference material, clearly say that it was not found.
 
 LANGUAGE:
-- Follow the explicit language instruction provided in the user prompt.
-- If Hindi/Hinglish is requested, answer naturally in Hindi/Hinglish.
-- If English is requested, answer in English.
+- Follow the explicit language instruction provided in the prompt.
+- When Hindi/Hinglish is requested, use natural conversational Hinglish.
+- Do not translate every English technical term into Hindi.
+- Keep technical/academic terms in English when natural.
+- Do not produce overly formal Hindi unless the student uses formal Hindi.
+- When English is requested, respond naturally in English.
 - Do not unnecessarily switch languages.
-
 STYLE:
 - Be friendly and educational.
 - Avoid excessive repetition.
@@ -366,13 +368,22 @@ def _get_feature_instruction(feature: str) -> str:
 
     instructions = {
 
-        "doubt": """
-Explain the student's doubt clearly.
-Break difficult concepts into simple steps.
-If the question requires calculation, show the relevant steps.
-""",
+"doubt": """
+Help the student with their actual question or request.
 
-        "notes": """
+If the student is only asking you to change language, tone, style, or
+conversation behavior, respond naturally and briefly. Do NOT generate a
+generic study method or explain how to solve doubts.
+
+For an actual academic doubt:
+- Answer the student's actual question directly.
+- Explain the concept in simple steps when needed.
+- Show calculations only when required.
+- Use examples when they genuinely help.
+- Keep the response natural and conversational.
+- Do not give a generic template for solving doubts.
+""",
+"notes": """
 Create concise and useful study notes.
 Use headings, bullets and important points.
 Keep the notes easy to revise.
@@ -553,12 +564,29 @@ def ask_raxx_ai(
     # --------------------------------------------------------
 
     language_instruction = {
-        "hi": "Answer in Hindi/Hinglish as appropriate for the student.",
-        "en": "Answer in English.",
-    }.get(
-        (language or "en").lower(),
-        "Answer in the same language used by the student."
-    )
+    "hi": """
+Respond naturally in Hindi/Hinglish.
+
+Use conversational Hinglish like a helpful Indian tutor.
+Do not translate every technical English term into Hindi.
+Keep technical terms such as DFA, NFA, automata, formula, theorem,
+algorithm, etc. in English when that sounds natural.
+
+Do not force Hindi into every sentence.
+Do not write overly formal Hindi unless the student does.
+""",
+
+    "en": """
+Respond naturally in English.
+Use a friendly, conversational tutor style.
+""",
+}.get(
+    (language or "en").lower(),
+    """
+Respond naturally in the same language used by the student.
+Use a friendly, conversational tutor style.
+"""
+)
 
     # --------------------------------------------------------
     # RAG
@@ -714,13 +742,29 @@ def ask_raxx_ai_stream(
     # --------------------------------------------------------
 
     language_instruction = {
-        "hi": "Answer in Hindi/Hinglish as appropriate for the student.",
-        "en": "Answer in English.",
-    }.get(
-        (language or "en").lower(),
-        "Answer in the same language used by the student."
-    )
+    "hi": """
+Respond naturally in Hindi/Hinglish.
 
+Use conversational Hinglish like a helpful Indian tutor.
+Do not translate every technical English term into Hindi.
+Keep technical terms such as DFA, NFA, automata, formula, theorem,
+algorithm, etc. in English when that sounds natural.
+
+Do not force Hindi into every sentence.
+Do not write overly formal Hindi unless the student does.
+""",
+
+    "en": """
+Respond naturally in English.
+Use a friendly, conversational tutor style.
+""",
+}.get(
+    (language or "en").lower(),
+    """
+Respond naturally in the same language used by the student.
+Use a friendly, conversational tutor style.
+"""
+)
     # --------------------------------------------------------
     # RAG
     # --------------------------------------------------------
