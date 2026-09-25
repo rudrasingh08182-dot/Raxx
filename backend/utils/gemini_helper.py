@@ -72,6 +72,12 @@ MODEL_NAME = "nvidia/nemotron-3.5-lightning-30b-a3b"
 # mocktest/career/studyplan JSON-schema-constrained hain isliye wahan safe hai.
 FAST_FEATURES = {"mocktest", "career", "studyplan"}
 
+# doubt/notes ke liye pehle poora reasoning OFF tha (jisse checklist leak
+# hoti thi), phir poora UNBOUNDED kar diya (jisse 194 second tak lag gaye).
+# Sahi balance: capped reasoning — model thoda soch sake (facts sahi ho,
+# khud-checklist na likhe) lekin ek hard token limit ke andar hi rahe.
+LIGHT_REASONING_FEATURES = {"doubt", "notes"}
+
 RAXX_SYSTEM_PROMPT = """
 You are RAXX AI, India's smartest AI study assistant — built for every Indian student
 from Class 6 to competitive exams (JEE, NEET, UPSC, SSC, Railway).
@@ -327,9 +333,13 @@ def ask_raxx_ai(
             "chat_template_kwargs": {"enable_thinking": False},
             "reasoning_budget": 0,
         }
-        # mocktest/career ka structured JSON bada hota hai, isliye zyada tokens;
-        # doubt/notes ka jawab chhota conversational hota hai, 4000 kaafi hai
-        max_out_tokens = 14000 if feature in {"mocktest", "career", "studyplan"} else 4000
+        max_out_tokens = 14000
+    elif feature in LIGHT_REASONING_FEATURES:
+        extra_body = {
+            "chat_template_kwargs": {"enable_thinking": True},
+            "reasoning_budget": 400,   # hard cap — max ~400 reasoning tokens, phir forced answer
+        }
+        max_out_tokens = 4000
 
     # JSON-structured features (mocktest/career) mein repetition penalty OFF —
     # warna model field names/brackets/quotes repeat karne se bachne ki koshish
