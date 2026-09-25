@@ -849,8 +849,18 @@ Use a friendly, conversational tutor style.
 
             final_answer += content
 
-            cleaned_content = _strip_thinking(
-                content
+            cleaned_content = re.sub(
+                r"<think>.*?</think>",
+                "",
+                content,
+                flags=re.DOTALL | re.IGNORECASE,
+            )
+
+            cleaned_content = re.sub(
+                r"<analysis>.*?</analysis>",
+                "",
+                cleaned_content,
+                flags=re.DOTALL | re.IGNORECASE,
             )
 
             if cleaned_content:
@@ -858,8 +868,7 @@ Use a friendly, conversational tutor style.
 
     except Exception:
         raise
-
-    # --------------------------------------------------------
+    #------------------------------------------------------
     # FINAL CLEANUP
     # --------------------------------------------------------
 
