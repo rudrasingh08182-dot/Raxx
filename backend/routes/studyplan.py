@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from utils.gemini_helper import ask_raxx_ai
 import json
 import re
@@ -11,225 +11,88 @@ class StudyPlanRequest(BaseModel):
     name: str
     exam: str
     exam_date: str
-    subjects: list = Field(default_factory=list)
+    subjects: list
     daily_hours: int = 6
     study_time_preference: str = "day"
-    weak_subjects: list = Field(default_factory=list)
+    weak_subjects: list = []
     language: str = "english"
     board: str = "CBSE"
     grade: str = "12"
 
 
-def _extract_json_object(response_text):
-    """
-    AI response se valid JSON object safely extract karta hai.
-
-    Handles:
-    - Normal JSON
-    - ```json ... ```
-    - Extra text before/after JSON
-    """
-
-    # Safety: response string hona chahiye
-    if not isinstance(response_text, str):
-        raise json.JSONDecodeError(
-            "AI response is not a string",
-            str(response_text),
-            0,
-        )
-
+def _extract_json_object(response_text: str):
     text = response_text.strip()
 
-    if not text:
-        raise json.JSONDecodeError(
-            "Empty AI response",
-            text,
-            0,
-        )
-
-    # Markdown code fences remove
+    # Remove ```json ... ```
     text = re.sub(
         r"^```(?:json)?\s*",
         "",
         text,
-        flags=re.IGNORECASE,
+        flags=re.IGNORECASE
     )
 
     text = re.sub(
         r"\s*```$",
         "",
-        text,
+        text
     )
 
     text = text.strip()
 
     # Direct JSON
     try:
-        parsed = json.loads(text)
-
-        if isinstance(parsed, dict):
-            return parsed
-
+        return json.loads(text)
     except json.JSONDecodeError:
         pass
 
-    # Extra text ke andar JSON object find karo
+    # JSON embedded inside extra text
     start = text.find("{")
     end = text.rfind("}")
 
     if start == -1 or end == -1 or end <= start:
         raise json.JSONDecodeError(
-            "No JSON object found in AI response",
+            "No valid JSON object found",
             text,
-            0,
+            0
         )
 
-    json_text = text[start:end + 1]
-
-    try:
-        parsed = json.loads(json_text)
-    except json.JSONDecodeError:
-        raise
-
-    if not isinstance(parsed, dict):
-        raise json.JSONDecodeError(
-            "Study plan JSON must be an object",
-            json_text,
-            0,
-        )
-
-    return parsed
-
-
-def _validate_study_plan(plan):
-    """
-    AI generated study plan ka basic structure validate karta hai.
-    """
-
-    if not isinstance(plan, dict):
-        raise ValueError("Study plan must be a JSON object.")
-
-    required_keys = [
-        "overview",
-        "total_days",
-        "daily_hours",
-        "tip",
-        "days",
-    ]
-
-    for key in required_keys:
-        if key not in plan:
-            raise ValueError(
-                f"Study plan is missing required field: {key}"
-            )
-
-    if not isinstance(plan["days"], list):
-        raise ValueError("Study plan 'days' must be a list.")
-
-    if len(plan["days"]) != 7:
-        raise ValueError(
-            f"Study plan must contain exactly 7 days, got {len(plan['days'])}."
-        )
-
-    for index, day in enumerate(plan["days"], start=1):
-
-        if not isinstance(day, dict):
-            raise ValueError(
-                f"Day {index} must be an object."
-            )
-
-        if "tasks" not in day:
-            raise ValueError(
-                f"Day {index} is missing tasks."
-            )
-
-        if not isinstance(day["tasks"], list):
-            raise ValueError(
-                f"Day {index} tasks must be a list."
-            )
-
-    return True
+    return json.loads(text[start:end + 1])
 
 
 @router.post("/generate")
 def generate_study_plan(req: StudyPlanRequest):
 
     try:
-        # ---------------------------------------------------------
-        # 1. Prepare subjects
-        # ---------------------------------------------------------
-
-        subjects = ", ".join(
-            str(subject).strip()
-            for subject in req.subjects
-            if str(subject).strip()
+        weak = (
+            ", ".join(req.weak_subjects)
+            if req.weak_subjects
+            else "None"
         )
 
-        weak = ", ".join(
-            str(subject).strip()
-            for subject in req.weak_subjects
-            if str(subject).strip()
-        )
-
-        if not subjects:
-            subjects = "All selected subjects"
-
-        if not weak:
-            weak = "None"
-
-        # ---------------------------------------------------------
-        # 2. Time preference
-        # ---------------------------------------------------------
+        subjects = ", ".join(req.subjects)
 
         time_pref_instruction = {
             "day": (
                 "Student studies best during the DAY. "
-                "Put difficult and new-topic blocks mainly between "
-                "6 AM and 6 PM. Keep late evening lighter for revision "
-                "and practice."
+                "Put difficult/new topics mainly between 6 AM and 6 PM. "
+                "Keep evening work lighter."
             ),
 
             "night": (
                 "Student studies best at NIGHT. "
-                "Put difficult and new-topic blocks mainly between "
-                "6 PM and 1 AM. Keep morning and afternoon lighter "
-                "for revision, practice, or rest."
+                "Put difficult/new topics mainly between 6 PM and 1 AM. "
+                "Keep morning and afternoon work lighter."
             ),
 
             "flexible": (
                 "Student has no strong time preference. "
-                "Spread difficult topics naturally across the day "
-                "and include revision throughout the day."
-            ),
-        }.get(
-            str(req.study_time_preference).lower().strip(),
-            (
-                "Student has no strong time preference. "
                 "Spread difficult topics naturally across the day."
             ),
-        )
-
-        # ---------------------------------------------------------
-        # 3. Language
-        # ---------------------------------------------------------
-
-        language_instruction = {
-            "english": "Generate the study plan in English.",
-            "en": "Generate the study plan in English.",
-            "hindi": "Generate the study plan in Hindi.",
-            "hi": "Generate the study plan in Hindi.",
-            "hinglish": (
-                "Generate the study plan in natural Hinglish "
-                "(Hindi written using English/Roman script)."
-            ),
         }.get(
-            str(req.language).lower().strip(),
-            f"Generate the study plan in {req.language}.",
+            req.study_time_preference,
+            "Student has no strong time preference. "
+            "Spread difficult topics naturally across the day."
         )
-
-        # ---------------------------------------------------------
-        # 4. AI prompt
-        # ---------------------------------------------------------
 
         question = f"""
 You are an expert study planner for Indian competitive exams.
@@ -246,22 +109,17 @@ TIME PREFERENCE:
 {time_pref_instruction}
 
 LANGUAGE:
-{language_instruction}
+Answer in {req.language}.
 
 Create a detailed 7-day study plan.
 
-VERY IMPORTANT:
-Return ONLY ONE valid JSON object.
+RETURN ONLY VALID JSON.
 
-Do NOT return:
-- Markdown
-- ```json
-- ``` 
-- Explanation outside JSON
-- Any text before JSON
-- Any text after JSON
+Do NOT use markdown.
+Do NOT use ```json.
+Do NOT add any explanation before or after the JSON.
 
-The JSON MUST follow this exact structure:
+The JSON MUST follow this structure:
 
 {{
   "overview": "2-3 line overview of the plan",
@@ -272,7 +130,7 @@ The JSON MUST follow this exact structure:
     {{
       "day": 1,
       "date_label": "Day 1",
-      "focus": "Main focus topic for the day",
+      "focus": "Main focus topic",
       "tasks": [
         {{
           "time": "6:00 AM - 8:00 AM",
@@ -287,57 +145,31 @@ The JSON MUST follow this exact structure:
           "topic": "Short break",
           "type": "break",
           "duration": "15 mins"
-        }},
-        {{
-          "time": "8:15 AM - 10:15 AM",
-          "subject": "Chemistry",
-          "topic": "Organic reactions practice",
-          "type": "practice",
-          "duration": "2 hours"
         }}
       ],
       "revision": "What to revise today",
-      "motivation": "Short motivational message for the day"
+      "motivation": "Short motivational message"
     }}
   ]
 }}
 
-CRITICAL RULES:
+RULES:
 
 1. Generate exactly 7 days.
-
-2. Every day MUST contain a tasks array.
-
-3. Study-task durations, excluding breaks, MUST total EXACTLY
-   {req.daily_hours} hours every day.
-
+2. Every day must contain tasks.
+3. Study-task durations excluding breaks MUST total exactly {req.daily_hours} hours every day.
 4. Break durations do NOT count toward study hours.
-
-5. Add a 10-15 minute break after approximately every
-   2 hours of continuous study.
-
-6. Weak subjects ({weak}) should receive proportionally more
-   study time.
-
+5. Add 10-15 minute breaks after approximately every 2 hours.
+6. Weak subjects ({weak}) should receive proportionally more time.
 7. Include revision every day.
-
-8. Follow this time preference exactly:
-
-{time_pref_instruction}
-
-9. Topics must be relevant to {req.exam}.
-
-10. Use the selected subjects:
-    {subjects}
-
-11. The final response MUST be valid JSON.
-
-12. Return ONLY the JSON object.
+8. Follow the time preference exactly.
+9. Keep topics relevant to {req.exam}.
+10. Return ONLY the JSON object.
 """
 
-        # ---------------------------------------------------------
-        # 5. AI call
-        # ---------------------------------------------------------
+        # -----------------------------------------
+        # AI CALL
+        # -----------------------------------------
 
         result = ask_raxx_ai(
             question=question,
@@ -347,146 +179,175 @@ CRITICAL RULES:
             grade=req.grade,
         )
 
-        # ---------------------------------------------------------
-        # 6. Validate helper response
-        # ---------------------------------------------------------
-
         print(
             f"[STUDYPLAN] AI result type: {type(result)}",
-            flush=True,
+            flush=True
         )
 
-        if not isinstance(result, dict):
+        # -----------------------------------------
+        # IMPORTANT:
+        # ask_raxx_ai can return either:
+        #
+        # 1. dict:
+        #    {"success": True, "answer": "..."}
+        #
+        # OR
+        #
+        # 2. raw string:
+        #    "{ ...JSON... }"
+        #
+        # Handle BOTH.
+        # -----------------------------------------
+
+        cache_read = False
+        tokens_used = 0
+
+        if isinstance(result, dict):
+
+            if not result.get("success", False):
+                error_message = result.get(
+                    "error",
+                    "AI generation failed."
+                )
+
+                raise HTTPException(
+                    status_code=500,
+                    detail=error_message
+                )
+
+            response_text = str(
+                result.get("answer", "")
+            ).strip()
+
+            cache_read = result.get(
+                "cache_read",
+                False
+            )
+
+            tokens_used = result.get(
+                "tokens_used",
+                0
+            )
+
+        elif isinstance(result, str):
+
+            # Current helper raw-string response
+            response_text = result.strip()
+
+        else:
+
             print(
-                f"[STUDYPLAN] Invalid helper result: {result}",
-                flush=True,
+                f"[STUDYPLAN] Unexpected helper result: {result}",
+                flush=True
             )
 
             raise HTTPException(
                 status_code=500,
-                detail="AI helper returned an invalid response."
+                detail="AI helper returned an unsupported response."
             )
 
-        if not result.get("success", False):
-
-            error_message = result.get(
-                "error",
-                "Study plan generation failed."
-            )
-
-            print(
-                f"[STUDYPLAN AI ERROR] {error_message}",
-                flush=True,
-            )
-
-            raise HTTPException(
-                status_code=500,
-                detail=str(error_message),
-            )
-
-        # ---------------------------------------------------------
-        # 7. Get AI answer safely
-        # ---------------------------------------------------------
-
-        response_text = result.get("answer", "")
-
-        if response_text is None:
-            response_text = ""
-
-        if not isinstance(response_text, str):
-            response_text = str(response_text)
-
-        response_text = response_text.strip()
-
-        print(
-            f"[STUDYPLAN] Response length: {len(response_text)}",
-            flush=True,
-        )
-
-        print(
-            f"[STUDYPLAN] AI response:\n{response_text}",
-            flush=True,
-        )
+        # -----------------------------------------
+        # EMPTY RESPONSE CHECK
+        # -----------------------------------------
 
         if not response_text:
+
             raise HTTPException(
                 status_code=500,
                 detail="AI returned an empty study plan."
             )
 
-        # ---------------------------------------------------------
-        # 8. Extract JSON
-        # ---------------------------------------------------------
+        print(
+            f"[STUDYPLAN] Response length: {len(response_text)}",
+            flush=True
+        )
+
+        print(
+            f"[STUDYPLAN] AI response:\n{response_text}",
+            flush=True
+        )
+
+        # -----------------------------------------
+        # PARSE JSON
+        # -----------------------------------------
 
         try:
-            plan = _extract_json_object(response_text)
+
+            plan = _extract_json_object(
+                response_text
+            )
 
         except json.JSONDecodeError as e:
 
             print(
                 f"[STUDYPLAN JSON ERROR] {str(e)}",
-                flush=True,
+                flush=True
             )
+
+            raise HTTPException(
+                status_code=500,
+                detail="AI returned invalid study plan JSON. Please try again."
+            )
+
+        # -----------------------------------------
+        # BASIC VALIDATION
+        # -----------------------------------------
+
+        if not isinstance(plan, dict):
+
+            raise HTTPException(
+                status_code=500,
+                detail="Study plan must be a JSON object."
+            )
+
+        if "days" not in plan:
+
+            raise HTTPException(
+                status_code=500,
+                detail="Study plan response is missing days."
+            )
+
+        if not isinstance(plan["days"], list):
+
+            raise HTTPException(
+                status_code=500,
+                detail="Study plan days must be a list."
+            )
+
+        if len(plan["days"]) != 7:
 
             raise HTTPException(
                 status_code=500,
                 detail=(
-                    "AI returned invalid study plan JSON. "
-                    "Please try again."
-                ),
+                    f"AI returned {len(plan['days'])} days "
+                    "instead of exactly 7."
+                )
             )
 
-        # ---------------------------------------------------------
-        # 9. Validate JSON structure
-        # ---------------------------------------------------------
-
-        try:
-            _validate_study_plan(plan)
-
-        except ValueError as e:
-
-            print(
-                f"[STUDYPLAN VALIDATION ERROR] {str(e)}",
-                flush=True,
-            )
-
-            raise HTTPException(
-                status_code=500,
-                detail=str(e),
-            )
-
-        # ---------------------------------------------------------
-        # 10. Success response
-        # ---------------------------------------------------------
+        # -----------------------------------------
+        # SUCCESS
+        # -----------------------------------------
 
         return {
             "status": "success",
             "exam": req.exam,
             "exam_date": req.exam_date,
             "plan": plan,
-            "cache_read": bool(result.get("cache_read", False)),
-            "tokens_used": result.get("tokens_used", 0),
+            "cache_read": cache_read,
+            "tokens_used": tokens_used,
         }
-
-    # -------------------------------------------------------------
-    # FastAPI errors
-    # -------------------------------------------------------------
 
     except HTTPException:
         raise
 
-    # -------------------------------------------------------------
-    # Unexpected errors
-    # -------------------------------------------------------------
-
     except Exception as e:
 
         print(
-            f"[STUDYPLAN ERROR] {type(e).__name__}: {str(e)}",
-            flush=True,
+            f"[STUDYPLAN ERROR] {str(e)}",
+            flush=True
         )
 
         raise HTTPException(
             status_code=500,
-            detail=str(e),
+            detail=str(e)
         )
