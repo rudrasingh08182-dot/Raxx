@@ -610,9 +610,7 @@ def ask_raxx_ai(
         reasoning_effort=reasoning_config[
             "reasoning_effort"
         ],
-        include_reasoning=reasoning_config[
-            "include_reasoning"
-        ],
+        
         max_completion_tokens=reasoning_config[
             "max_completion_tokens"
         ],
@@ -773,9 +771,7 @@ def ask_raxx_ai_stream(
         reasoning_effort=reasoning_config[
             "reasoning_effort"
         ],
-        include_reasoning=reasoning_config[
-            "include_reasoning"
-        ],
+       
         max_completion_tokens=reasoning_config[
             "max_completion_tokens"
         ],
