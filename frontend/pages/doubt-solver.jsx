@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/router";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const subjects = [
   "All Subjects", "Mathematics", "Physics", "Chemistry",
@@ -380,9 +382,100 @@ export default function DoubtSolver() {
                       className="px-4 py-3 rounded-2xl rounded-tl-sm"
                       style={{ background: c.surfaceElevated, border: `1px solid ${c.border}` }}
                     >
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: c.textMuted }}>
-                        {msg.content}
-                      </div>
+                      <div
+  className="text-sm leading-relaxed"
+  style={{ color: c.textMuted }}
+>
+  <ReactMarkdown
+    remarkPlugins={[remarkGfm]}
+    components={{
+      h1: ({ children }) => (
+        <h1
+          className="text-2xl font-bold mt-4 mb-3"
+          style={{ color: c.text }}
+        >
+          {children}
+        </h1>
+      ),
+
+      h2: ({ children }) => (
+        <h2
+          className="text-xl font-bold mt-4 mb-2"
+          style={{ color: c.text }}
+        >
+          {children}
+        </h2>
+      ),
+
+      h3: ({ children }) => (
+        <h3
+          className="text-lg font-bold mt-3 mb-2"
+          style={{ color: c.text }}
+        >
+          {children}
+        </h3>
+      ),
+
+      p: ({ children }) => (
+        <p className="mb-3 leading-7">
+          {children}
+        </p>
+      ),
+
+      strong: ({ children }) => (
+        <strong
+          className="font-bold"
+          style={{ color: c.text }}
+        >
+          {children}
+        </strong>
+      ),
+
+      ul: ({ children }) => (
+        <ul className="list-disc ml-5 mb-3 space-y-1">
+          {children}
+        </ul>
+      ),
+
+      ol: ({ children }) => (
+        <ol className="list-decimal ml-5 mb-3 space-y-1">
+          {children}
+        </ol>
+      ),
+
+      li: ({ children }) => (
+        <li className="leading-7">
+          {children}
+        </li>
+      ),
+
+      code: ({ inline, children }) =>
+        inline ? (
+          <code
+            className="px-1 py-0.5 rounded"
+            style={{
+              background: c.bg,
+              color: c.amber,
+            }}
+          >
+            {children}
+          </code>
+        ) : (
+          <pre
+            className="p-3 rounded-xl overflow-x-auto mb-3"
+            style={{
+              background: c.bg,
+              border: `1px solid ${c.border}`,
+            }}
+          >
+            <code>{children}</code>
+          </pre>
+        ),
+    }}
+  >
+    {msg.content}
+  </ReactMarkdown>
+</div>
                       <div className="flex items-center gap-2 mt-2.5 pt-2.5" style={{ borderTop: `1px solid ${c.border}` }}>
                         <button
                           onClick={() => navigator.clipboard.writeText(msg.content)}
