@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from supabase import create_client
 from utils.gemini_helper import ask_raxx_ai
+from utils.interview_retrieval import search_interview_questions
 import os, json
 
 router = APIRouter(prefix='/api/interview', tags=['mock-interview'])
@@ -95,9 +96,30 @@ async def start_interview(data: StartInterview):
             "hard": "3-5 years senior level"
         }
 
+        # Uploaded interview-question bank se relevant reference questions
+        # laao — pure semantic match, koi exact company/role filter nahi
+        # (guides ke labels frontend ke dropdown se hubahu match nahi karte)
+        retrieved = search_interview_questions(data.company, data.role, top_k=8)
+
+        reference_block = ""
+        if retrieved:
+            formatted = "\n\n".join(
+                f"Q: {r['question']}\nModel Answer Reference: {(r.get('model_answer') or '')[:500]}"
+                for r in retrieved
+            )
+            reference_block = f"""
+
+REFERENCE QUESTION BANK (real curated interview questions — use these as
+inspiration/basis for at least 2-3 of the 5 questions you generate, adapted
+to fit {data.company}/{data.role} naturally. Don't copy verbatim if it
+doesn't fit the role, but prefer these over inventing generic ones):
+
+{formatted}"""
+
         question = f"""You are an expert technical interviewer at {data.company}.
 You are interviewing a candidate for the role of {data.role}.
 Difficulty level: {difficulty_map.get(data.difficulty, 'medium')} position.
+{reference_block}
 
 Generate exactly 5 interview questions for this candidate. Mix of:
 - Technical questions specific to {data.role}
