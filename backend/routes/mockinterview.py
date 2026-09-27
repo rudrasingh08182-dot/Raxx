@@ -98,16 +98,24 @@ async def start_interview(data: StartInterview):
 
         # Uploaded interview-question bank se relevant reference questions
         # laao — pure semantic match, koi exact company/role filter nahi
-        # (guides ke labels frontend ke dropdown se hubahu match nahi karte)
-        retrieved = search_interview_questions(data.company, data.role, top_k=8)
-
+        # (guides ke labels frontend ke dropdown se hubahu match nahi karte).
+        # Poori tarah try/except mein — is feature ka fail hona poore
+        # interview-start ko crash nahi karna chahiye, bas plain AI
+        # questions ban jayenge bina reference ke.
         reference_block = ""
-        if retrieved:
-            formatted = "\n\n".join(
-                f"Q: {r['question']}\nModel Answer Reference: {(r.get('model_answer') or '')[:500]}"
-                for r in retrieved
-            )
-            reference_block = f"""
+        try:
+            retrieved = search_interview_questions(data.company, data.role, top_k=8)
+            valid_rows = [r for r in retrieved if isinstance(r, dict) and r.get("question")]
+
+            if len(valid_rows) < len(retrieved):
+                print(f"[mockinterview] Skipped {len(retrieved) - len(valid_rows)} malformed retrieval row(s)", flush=True)
+
+            if valid_rows:
+                formatted = "\n\n".join(
+                    f"Q: {r['question']}\nModel Answer Reference: {(r.get('model_answer') or '')[:500]}"
+                    for r in valid_rows
+                )
+                reference_block = f"""
 
 REFERENCE QUESTION BANK (real curated interview questions — use these as
 inspiration/basis for at least 2-3 of the 5 questions you generate, adapted
@@ -115,6 +123,9 @@ to fit {data.company}/{data.role} naturally. Don't copy verbatim if it
 doesn't fit the role, but prefer these over inventing generic ones):
 
 {formatted}"""
+        except Exception as e:
+            print(f"[mockinterview] Retrieval augmentation failed (non-fatal): {e}", flush=True)
+            reference_block = ""
 
         question = f"""You are an expert technical interviewer at {data.company}.
 You are interviewing a candidate for the role of {data.role}.
