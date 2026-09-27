@@ -28,11 +28,24 @@ export default function Login() {
 
       const { data: profile } = await supabase
         .from("users")
-        .select("role")
+        .select("id, name, email, role, student_code")
         .eq("id", data.user.id)
         .single();
 
       const role = profile?.role;
+
+      // App ke baaki hisse (mock-interview, tasks, batch, etc.) is exact
+      // localStorage key + shape pe depend karte hain — isse pehle ye
+      // kahin set hi nahi ho raha tha, isliye user?.id hamesha undefined
+      // milta tha un pages par, chahe login kitna bhi successful ho.
+      localStorage.setItem("raxx_user", JSON.stringify({
+        id: profile?.id || data.user.id,
+        name: profile?.name || "",
+        email: profile?.email || data.user.email,
+        role: role,
+        student_code: profile?.student_code || null,
+      }));
+
       if (role === "teacher") router.push("/dashboard/teacher");
       else if (role === "parent") router.push("/dashboard/parent");
       else router.push("/dashboard/student");
