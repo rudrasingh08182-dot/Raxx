@@ -150,17 +150,17 @@ Return ONLY a JSON array with this exact format, no other text:
   ...5 questions total
 ]"""
 
-        # gemini_helper se call karo — caching automatic!
-        result = ask_raxx_ai(
+        # gemini_helper se call karo — ab ye seedha string return karta hai
+        raw = ask_raxx_ai(
             question=question,
             feature="mocktest",
-            language="english",
+            language="en",
         )
 
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
+        if not raw:
+            raise HTTPException(status_code=500, detail="AI se empty response mila. Try again!")
 
-        raw = result["answer"].strip()
+        raw = raw.strip()
 
         # Clean JSON
         if "```json" in raw:
@@ -177,7 +177,6 @@ Return ONLY a JSON array with this exact format, no other text:
             'difficulty': data.difficulty,
             'total_questions': len(questions),
             'questions': questions,
-            'cache_read': result["cache_read"],
         }
 
     except json.JSONDecodeError:
@@ -217,17 +216,17 @@ Evaluate this answer and return ONLY a JSON object in this exact format, no othe
   "encouragement": "<one line motivational feedback in Hindi or English>"
 }}"""
 
-        # gemini_helper se call karo — caching automatic!
-        result = ask_raxx_ai(
+        # gemini_helper se call karo — ab ye seedha string return karta hai
+        raw = ask_raxx_ai(
             question=question,
             feature="mocktest",
-            language="english",
+            language="en",
         )
 
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
+        if not raw:
+            raise HTTPException(status_code=500, detail="AI se empty response mila. Try again!")
 
-        raw = result["answer"].strip()
+        raw = raw.strip()
 
         if "```json" in raw:
             raw = raw.split("```json")[1].split("```")[0].strip()
@@ -240,7 +239,6 @@ Evaluate this answer and return ONLY a JSON object in this exact format, no othe
             'success': True,
             'question_number': data.question_number,
             'evaluation': evaluation,
-            'cache_read': result["cache_read"],
         }
 
     except json.JSONDecodeError:
@@ -276,17 +274,17 @@ Generate a detailed final report. Return ONLY JSON in this exact format:
   "motivational_message": "<encouraging message in Hindi/English mix>"
 }}"""
 
-        # gemini_helper se call karo — caching automatic!
-        result = ask_raxx_ai(
+        # gemini_helper se call karo — ab ye seedha string return karta hai
+        raw = ask_raxx_ai(
             question=question,
             feature="mocktest",
-            language="english",
+            language="en",
         )
 
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
+        if not raw:
+            raise HTTPException(status_code=500, detail="AI se empty response mila. Try again!")
 
-        raw = result["answer"].strip()
+        raw = raw.strip()
 
         if "```json" in raw:
             raw = raw.split("```json")[1].split("```")[0].strip()
@@ -312,7 +310,6 @@ Generate a detailed final report. Return ONLY JSON in this exact format:
             'success': True,
             'score': data.score,
             'report': report,
-            'cache_read': result["cache_read"],
         }
 
     except json.JSONDecodeError:
