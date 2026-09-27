@@ -185,6 +185,11 @@ Return ONLY a JSON array with this exact format, no other text:
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        print("=" * 60, flush=True)
+        print("[mockinterview/start] FULL TRACEBACK:", flush=True)
+        traceback.print_exc()
+        print("=" * 60, flush=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
