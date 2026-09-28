@@ -273,6 +273,8 @@ def _build_rag_context(
             top_k=top_k,
         )
 
+        print(f"[RAG] retrieval returned {len(results) if results else 0} chunk(s) for: {question[:50]}", flush=True)
+
         if not results:
             return ""
 
@@ -308,7 +310,8 @@ def _build_rag_context(
             + "\n\n".join(references)
         )
 
-    except Exception:
+    except Exception as e:
+        print(f"[RAG] retrieval FAILED (silently ignored before): {type(e).__name__}: {e}", flush=True)
         return ""
 
 

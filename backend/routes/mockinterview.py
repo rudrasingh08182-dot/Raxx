@@ -107,6 +107,10 @@ async def start_interview(data: StartInterview):
             retrieved = search_interview_questions(data.company, data.role, top_k=8)
             valid_rows = [r for r in retrieved if isinstance(r, dict) and r.get("question")]
 
+            print(f"[mockinterview] Retrieved {len(valid_rows)} reference question(s) for {data.company}/{data.role}", flush=True)
+            for r in valid_rows[:3]:
+                print(f"   - {r['question'][:80]} (similarity={r.get('similarity')})", flush=True)
+
             if len(valid_rows) < len(retrieved):
                 print(f"[mockinterview] Skipped {len(retrieved) - len(valid_rows)} malformed retrieval row(s)", flush=True)
 
