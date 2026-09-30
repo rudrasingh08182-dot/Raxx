@@ -111,25 +111,23 @@ Respond in JSON only:
     ]
 }}"""
 
-        # gemini_helper se call karo — caching automatic!
-        result = ask_raxx_ai(
+        # gemini_helper se call karo — ab ye seedha string return karta hai
+        answer = ask_raxx_ai(
             question=question,
             feature="mocktest",
-            language="english",
+            language="en",
             board=req.exam_type,
         )
 
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
+        if not answer:
+            raise HTTPException(status_code=500, detail="AI se empty response mila. Try again!")
 
-        text = result["answer"].replace("```json", "").replace("```", "").strip()
+        text = answer.replace("```json", "").replace("```", "").strip()
         data = json.loads(text)
 
         return {
             "success": True,
             "questions": data["questions"],
-            "cache_read": result["cache_read"],
-            "tokens_used": result["tokens_used"],
         }
 
     except json.JSONDecodeError:

@@ -20,6 +20,12 @@ from reportlab.lib.enums import TA_LEFT, TA_CENTER
 
 router = APIRouter()
 
+from supabase import create_client
+supabase = create_client(
+    os.getenv("SUPABASE_URL"),
+    os.getenv("SUPABASE_SERVICE_KEY"),
+)
+
 # Direct client — sirf resume generate ke liye (PDF generation ke saath)
 client = OpenAI(
     base_url=os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1"),
@@ -49,6 +55,7 @@ class Project(BaseModel):
     tech: str
 
 class ResumeData(BaseModel):
+    user_id: str
     template: str
     name: str
     email: str
@@ -83,14 +90,95 @@ class ResumeChatData(BaseModel):
     resume_data: dict
 
 # ═══════════════════════════════════════
+# TEMPLATE STYLE PROFILES — AI content in profiles ke hisaab se dhalta hai,
+# taaki har template ke layout mein content sahi se fit baithe
+# ═══════════════════════════════════════
+
+  # ═══════════════════════════════════════
+# QUALITY REFERENCE EXAMPLES — used as few-shot style guidance so the AI
+# writes rich, substantial content instead of generic one-liners. These are
+# NEVER copied verbatim — they teach tone, depth and structure only.
+# ═══════════════════════════════════════
+
+PROFESSIONAL_SUMMARY_EXAMPLES = """
+1. "Motivated Computer Science undergraduate with hands-on experience building and deploying full-stack applications end-to-end, from backend architecture to production release. Combines strong fundamentals in Python and web technologies with a track record of shipping real, working products."
+2. "Aspiring AI/ML engineer with practical exposure to data analysis, model building and deployment pipelines. Has independently designed and built a RAG-based application integrating vector databases and LLM APIs, translating theoretical ML concepts into a functioning production system."
+3. "Detail-oriented final-year Computer Science student specializing in web development, with demonstrated ability to design responsive, user-focused interfaces and integrate them with scalable backend services. Comfortable working across the full stack from database schema to UI."
+4. "Data-driven Computer Science student with strong analytical foundations in Python, Pandas and visualization libraries. Has applied statistical and machine learning techniques to real datasets, with a growing portfolio of projects demonstrating end-to-end data pipeline design."
+5. "Electronics and Communication Engineering student with a strong grasp of embedded systems and signal processing fundamentals, paired with self-taught software development skills. Bridges hardware-level understanding with practical programming ability."
+6. "Computer Science undergraduate with a systems-first mindset, focused on writing clean, maintainable code and understanding how software scales in production. Has built and deployed multiple applications independently, handling everything from architecture decisions to live debugging."
+7. "Emerging cybersecurity enthusiast with foundational knowledge of network security, cryptography and secure coding practices, complemented by practical programming experience. Actively builds projects that combine software engineering fundamentals with a security-conscious mindset."
+8. "Mechanical Engineering student with a growing interest in automation and computational tools, applying programming skills to solve engineering problems traditionally handled manually. Combines core engineering fundamentals with practical software ability."
+"""
+
+CAREER_OBJECTIVE_EXAMPLES = """
+1. "Computer Science student seeking to apply strong programming fundamentals and hands-on project experience to a software engineering role where I can contribute to building scalable, real-world applications from day one."
+2. "AI Engineering aspirant who has taken projects from concept to live deployment, combining strong Python and ML fundamentals with real-world execution. Seeking to bring this blend of technical depth and product-building experience to a role developing AI-powered systems at scale."
+3. "Motivated to secure a full-stack development role where I can leverage my experience building and shipping complete applications to deliver reliable, user-focused software in a fast-paced engineering team."
+4. "Seeking a data analyst or data science role to apply strong foundations in statistical analysis, Python and visualization tools toward solving real business problems with data-driven insights."
+5. "Aiming to contribute to a backend/systems engineering team by applying strong fundamentals in data structures, algorithms and scalable application design, gained through independent full-stack project development."
+6. "Looking to join an early-career software development program where I can grow my engineering skills while contributing meaningfully to production codebases, backed by hands-on experience shipping a live application."
+7. "Seeking an opportunity in cloud or DevOps engineering to apply foundational AWS knowledge and automation mindset toward building reliable, well-architected infrastructure."
+8. "Aspiring machine learning engineer aiming to apply practical experience in building RAG pipelines, vector search and LLM integration toward developing production-grade AI systems."
+9. "Seeking a software engineering internship/role where I can apply my hands-on experience building and deploying full-stack applications, while continuing to deepen my skills in scalable system design."
+"""
+
+
+TEMPLATE_STYLES = {
+    "classic": {
+        "label": "Classic",
+        "summary_words": "45-60",
+        "bullets_per_role": "3-4",
+        "bullet_words": "16-24",
+    },
+    "modern": {
+        "label": "Modern",
+        "summary_words": "40-55",
+        "bullets_per_role": "3-4",
+        "bullet_words": "16-24",
+    },
+    "minimal": {
+        "label": "Minimal",
+        "summary_words": "30-40",
+        "bullets_per_role": "2-3",
+        "bullet_words": "12-18",
+    },
+    "elegant": {
+        "label": "Elegant",
+        "summary_words": "50-65",
+        "bullets_per_role": "3-4",
+        "bullet_words": "18-26",
+    },
+    "technical": {
+        "label": "Technical (ATS-Optimized)",
+        "summary_words": "35-45",
+        "bullets_per_role": "4-5",
+        "bullet_words": "14-20",
+    },
+}
+
+
+# ═══════════════════════════════════════
 # RESUME GENERATOR — Direct Nemotron (PDF generation ke saath)
 # ═══════════════════════════════════════
+
+TEMPLATE_BUILDERS = {
+    "classic": None,     # neeche set honge, forward-reference issue se bachne ke liye
+    "modern": None,
+    "minimal": None,
+    "elegant": None,
+    "technical": None,
+}
+
 
 @router.post("/resume-generate")
 async def generate_resume(data: ResumeData):
     try:
+        style = TEMPLATE_STYLES.get(data.template, TEMPLATE_STYLES["classic"])
+
         prompt = f"""
-You are an expert ATS resume writer. Optimize this student's resume data and return ONLY a JSON object.
+You are an expert ATS resume writer helping an Indian engineering student build a
+genuinely strong, one-page resume — not a thin, generic one.
 
 Student Data:
 - Name: {data.name}
@@ -104,16 +192,49 @@ Student Data:
 - Projects: {[f"{p.name} - {p.description} | Tech: {p.tech}" for p in data.projects]}
 - Achievements: {data.achievements}
 
+REFERENCE EXAMPLES — study these for TONE, DEPTH and STRUCTURE only. Never copy
+them verbatim or reuse their specific facts (name, company, exact claims) —
+they exist purely to show you what a genuinely strong summary/objective sounds
+like, so you write something equally substantial and specific to THIS student.
+
+Professional Summary examples:
+{PROFESSIONAL_SUMMARY_EXAMPLES}
+
+Career Objective examples (use this style when the student's data suggests a
+clear target role, e.g. from their skills/projects):
+{CAREER_OBJECTIVE_EXAMPLES}
+
+CRITICAL — ELABORATION RULES:
+- If a project/experience description is short (e.g. one line), EXPAND it into
+  multiple substantial bullet points by professionally unpacking what such a
+  project would genuinely involve given the stated tech stack — e.g. "built a
+  full-stack app with Python, React, Node" becomes separate bullets about the
+  backend logic, the frontend integration, and the deployment/outcome.
+- Do NOT invent fake metrics, company names, user counts or awards that were
+  never mentioned. Elaborate on WHAT WAS BUILT and HOW, using only the tech
+  stack and description given — not fabricated business impact numbers.
+- The summary must read like the reference examples above: specific to the
+  student's actual skills/domain, not a generic "hardworking team player" line.
+- Every project listed must get the full number of bullet points specified
+  below, even if the original input was just one sentence — this is the
+  single most common reason resumes come out looking thin, so treat it as
+  a hard requirement, not optional polish.
+
+STYLE CONSTRAINTS for the "{style['label']}" template — follow these exactly
+so the content fills a full page without overflowing:
+- Summary length: {style['summary_words']} words
+- Bullet points per role/project: {style['bullets_per_role']} (mandatory minimum, even for short input)
+- Each bullet point length: {style['bullet_words']} words
+
 Return ONLY this JSON (no extra text):
 {{
-  "summary": "2-3 line professional ATS summary",
+  "summary": "professional summary matching the depth/tone of the reference examples and the word count above",
   "skills": ["skill1", "skill2"],
   "experience": [{{"role": "", "company": "", "duration": "", "points": ["point1", "point2"]}}],
   "projects": [{{"name": "", "tech": "", "points": ["point1", "point2"]}}],
   "achievements": ["achievement1", "achievement2"]
 }}
 """
-        # Resume ke liye direct client (PDF bhi generate karna hai saath mein)
         response = client.chat.completions.create(
             model=MODEL_NAME,
             max_tokens=1500,
@@ -130,12 +251,20 @@ Return ONLY this JSON (no extra text):
         filename = f"resume_{uuid.uuid4().hex[:8]}.pdf"
         filepath = f"/tmp/{filename}"
 
-        if data.template == "modern":
-            build_modern_resume(filepath, data, optimized)
-        elif data.template == "minimal":
-            build_minimal_resume(filepath, data, optimized)
-        else:
-            build_classic_resume(filepath, data, optimized)
+        builder = TEMPLATE_BUILDERS.get(data.template, build_classic_resume)
+        builder(filepath, data, optimized)
+
+        # Supabase mein save karo — best-effort, fail hone par bhi PDF milna
+        # chahiye user ko, isliye ye alag try/except mein hai
+        try:
+            supabase.table("resumes").insert({
+                "user_id": data.user_id,
+                "template": data.template,
+                "form_data": data.model_dump(),
+                "ai_content": optimized,
+            }).execute()
+        except Exception as save_err:
+            print(f"[resume] DB save failed (non-fatal): {save_err}", flush=True)
 
         return FileResponse(
             path=filepath,
@@ -143,6 +272,63 @@ Return ONLY this JSON (no extra text):
             media_type="application/pdf"
         )
 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ═══════════════════════════════════════
+# SAVED RESUMES — history + template switch bina naye AI call ke
+# ═══════════════════════════════════════
+
+@router.get("/resumes/{user_id}")
+async def list_resumes(user_id: str):
+    try:
+        result = supabase.table("resumes") \
+            .select("id, template, created_at") \
+            .eq("user_id", user_id) \
+            .order("created_at", desc=True) \
+            .execute()
+        return {"success": True, "resumes": result.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class RegenerateResumeData(BaseModel):
+    resume_id: str
+    new_template: str
+
+
+@router.post("/resume-regenerate")
+async def regenerate_resume(data: RegenerateResumeData):
+    """
+    Purane AI content ko reuse karke ek naye template mein PDF banata hai —
+    koi naya AI call nahi (free + instant). Note: content lengths original
+    template ke hisaab se the, isliye bahut alag style wale template mein
+    thoda overflow ho sakta hai — best result ke liye /resume-generate ko
+    naye template ke saath dobara call karna behtar hai.
+    """
+    try:
+        result = supabase.table("resumes").select("*").eq("id", data.resume_id).single().execute()
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Resume not found")
+
+        record = result.data
+        form_data = ResumeData(**record["form_data"])
+        optimized = record["ai_content"]
+
+        filename = f"resume_{uuid.uuid4().hex[:8]}.pdf"
+        filepath = f"/tmp/{filename}"
+
+        builder = TEMPLATE_BUILDERS.get(data.new_template, build_classic_resume)
+        builder(filepath, form_data, optimized)
+
+        return FileResponse(
+            path=filepath,
+            filename=f"{form_data.name.replace(' ', '_')}_Resume.pdf",
+            media_type="application/pdf"
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -166,19 +352,18 @@ The candidate's previous answer was: "{data.previous_answer}"
 First give brief feedback on their answer (1-2 lines), then ask the next interview question.
 Question number: {data.question_number}"""
 
-        result = ask_raxx_ai(
+        answer = ask_raxx_ai(
             question=question,
             feature="mocktest",
-            language="english",
+            language="en",
         )
 
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
+        if not answer:
+            raise HTTPException(status_code=500, detail="AI se empty response mila. Try again!")
 
         return {
             "success": True,
-            "message": result["answer"],
-            "cache_read": result["cache_read"],
+            "message": answer,
         }
 
     except HTTPException:
@@ -203,22 +388,21 @@ Return ONLY a JSON array:
 Return ONLY a JSON array:
 [{{"question": "...", "tip": "how to answer this"}}]"""
 
-        result = ask_raxx_ai(
+        answer = ask_raxx_ai(
             question=question,
             feature="mocktest",
-            language="english",
+            language="en",
         )
 
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
+        if not answer:
+            raise HTTPException(status_code=500, detail="AI se empty response mila. Try again!")
 
-        raw = result["answer"].strip().replace("```json", "").replace("```", "").strip()
+        raw = answer.strip().replace("```json", "").replace("```", "").strip()
         questions = json.loads(raw)
 
         return {
             "success": True,
             "questions": questions,
-            "cache_read": result["cache_read"],
         }
 
     except json.JSONDecodeError:
@@ -249,23 +433,22 @@ Return ONLY a JSON object:
   "sem8": ["topic1", "topic2"]
 }}"""
 
-        result = ask_raxx_ai(
+        answer = ask_raxx_ai(
             question=question,
             feature="notes",
-            language="english",
+            language="en",
             board=data.branch,
         )
 
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
+        if not answer:
+            raise HTTPException(status_code=500, detail="AI se empty response mila. Try again!")
 
-        raw = result["answer"].strip().replace("```json", "").replace("```", "").strip()
+        raw = answer.strip().replace("```json", "").replace("```", "").strip()
         syllabus = json.loads(raw)
 
         return {
             "success": True,
             "syllabus": syllabus,
-            "cache_read": result["cache_read"],
         }
 
     except json.JSONDecodeError:
@@ -287,20 +470,19 @@ async def topic_notes(data: TopicNotesData):
 Include: definition, key concepts, important formulas, examples, exam tips.
 Format it nicely with clear sections."""
 
-        result = ask_raxx_ai(
+        answer = ask_raxx_ai(
             question=question,
             feature="notes",
-            language="english",
+            language="en",
             board=data.branch,
         )
 
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
+        if not answer:
+            raise HTTPException(status_code=500, detail="AI se empty response mila. Try again!")
 
         return {
             "success": True,
-            "notes": result["answer"],
-            "cache_read": result["cache_read"],
+            "notes": answer,
         }
 
     except HTTPException:
@@ -326,19 +508,18 @@ Student's question/request: {data.message}
 Give specific, actionable advice. If they ask to rewrite something, give the improved version directly.
 Keep response concise and helpful."""
 
-        result = ask_raxx_ai(
+        answer = ask_raxx_ai(
             question=question,
             feature="career",
-            language="english",
+            language="en",
         )
 
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
+        if not answer:
+            raise HTTPException(status_code=500, detail="AI se empty response mila. Try again!")
 
         return {
             "success": True,
-            "reply": result["answer"],
-            "cache_read": result["cache_read"],
+            "reply": answer,
         }
 
     except HTTPException:
@@ -579,3 +760,150 @@ def build_minimal_resume(filepath, data, optimized):
             story.append(Paragraph(f"• {ach}", bullet_style))
 
     doc.build(story)
+
+
+def build_elegant_resume(filepath, data, optimized):
+    """Two-column: left sidebar (contact/education/skills), right main content."""
+    doc = SimpleDocTemplate(filepath, pagesize=A4,
+                            rightMargin=0.5*inch, leftMargin=0.5*inch,
+                            topMargin=0.5*inch, bottomMargin=0.5*inch)
+
+    sidebar_title = ParagraphStyle('SBTitle', fontSize=10, fontName='Helvetica-Bold',
+                                    textColor=colors.HexColor('#0f172a'), spaceAfter=4, spaceBefore=10)
+    sidebar_body = ParagraphStyle('SBBody', fontSize=8.5, fontName='Helvetica',
+                                   textColor=colors.HexColor('#334155'), leading=13)
+    name_style = ParagraphStyle('Name', fontSize=20, fontName='Helvetica-Bold',
+                                 textColor=colors.HexColor('#0f172a'))
+    section_style = ParagraphStyle('Section', fontSize=11, fontName='Helvetica-Bold',
+                                    textColor=colors.HexColor('#0f172a'), spaceAfter=4, spaceBefore=8)
+    body_style = ParagraphStyle('Body', fontSize=9, fontName='Helvetica',
+                                 textColor=colors.HexColor('#333333'), leading=14)
+    bullet_style = ParagraphStyle('Bullet', fontSize=9, fontName='Helvetica',
+                                   textColor=colors.HexColor('#333333'), leading=14, leftIndent=10)
+
+    # Left sidebar content
+    sidebar = [Paragraph("CONTACT", sidebar_title),
+               Paragraph(data.email, sidebar_body),
+               Paragraph(data.phone, sidebar_body)]
+    if data.linkedin:
+        sidebar.append(Paragraph(data.linkedin, sidebar_body))
+    if data.github:
+        sidebar.append(Paragraph(data.github, sidebar_body))
+
+    sidebar.append(Paragraph("EDUCATION", sidebar_title))
+    sidebar.append(Paragraph(f"<b>{data.education.college}</b>", sidebar_body))
+    sidebar.append(Paragraph(f"{data.education.branch}", sidebar_body))
+    sidebar.append(Paragraph(f"CGPA: {data.education.cgpa} | {data.education.year}", sidebar_body))
+
+    if optimized.get("skills"):
+        sidebar.append(Paragraph("SKILLS", sidebar_title))
+        for s in optimized["skills"]:
+            sidebar.append(Paragraph(f"• {s}", sidebar_body))
+
+    # Right main content
+    main = [Paragraph(data.name.upper(), name_style), Spacer(1, 10)]
+    if optimized.get("summary"):
+        main.append(Paragraph("SUMMARY", section_style))
+        main.append(Paragraph(optimized["summary"], body_style))
+
+    if optimized.get("experience"):
+        main.append(Paragraph("EXPERIENCE", section_style))
+        for exp in optimized["experience"]:
+            main.append(Paragraph(f"<b>{exp['role']}</b> — {exp['company']} ({exp['duration']})", body_style))
+            for point in exp.get("points", []):
+                main.append(Paragraph(f"• {point}", bullet_style))
+            main.append(Spacer(1, 6))
+
+    if optimized.get("projects"):
+        main.append(Paragraph("PROJECTS", section_style))
+        for proj in optimized["projects"]:
+            main.append(Paragraph(f"<b>{proj['name']}</b> | {proj['tech']}", body_style))
+            for point in proj.get("points", []):
+                main.append(Paragraph(f"• {point}", bullet_style))
+            main.append(Spacer(1, 6))
+
+    if optimized.get("achievements"):
+        main.append(Paragraph("ACHIEVEMENTS", section_style))
+        for ach in optimized["achievements"]:
+            main.append(Paragraph(f"• {ach}", bullet_style))
+
+    layout = Table([[sidebar, main]], colWidths=[2.1*inch, 5.0*inch])
+    layout.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#f1f5f9')),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (0, 0), 12),
+        ('RIGHTPADDING', (0, 0), (0, 0), 12),
+        ('TOPPADDING', (0, 0), (0, 0), 14),
+        ('LEFTPADDING', (1, 0), (1, 0), 16),
+    ]))
+
+    doc.build([layout])
+
+
+def build_technical_resume(filepath, data, optimized):
+    """Single-column, high-density, pure black/white — maximum ATS parsing safety."""
+    doc = SimpleDocTemplate(filepath, pagesize=A4,
+                            rightMargin=0.6*inch, leftMargin=0.6*inch,
+                            topMargin=0.5*inch, bottomMargin=0.5*inch)
+    story = []
+
+    name_style = ParagraphStyle('Name', fontSize=18, fontName='Helvetica-Bold', textColor=colors.black)
+    contact_style = ParagraphStyle('Contact', fontSize=9, fontName='Helvetica', textColor=colors.HexColor('#333333'))
+    section_style = ParagraphStyle('Section', fontSize=10, fontName='Helvetica-Bold',
+                                    textColor=colors.black, spaceAfter=3, spaceBefore=8)
+    body_style = ParagraphStyle('Body', fontSize=8.5, fontName='Helvetica',
+                                 textColor=colors.black, leading=12.5)
+    bullet_style = ParagraphStyle('Bullet', fontSize=8.5, fontName='Helvetica',
+                                   textColor=colors.black, leading=12.5, leftIndent=10)
+
+    story.append(Paragraph(data.name, name_style))
+    contact = f"{data.email} | {data.phone}"
+    if data.linkedin: contact += f" | {data.linkedin}"
+    if data.github: contact += f" | {data.github}"
+    story.append(Paragraph(contact, contact_style))
+    story.append(Spacer(1, 6))
+    story.append(HRFlowable(width="100%", thickness=1, color=colors.black))
+
+    if optimized.get("summary"):
+        story.append(Paragraph("SUMMARY", section_style))
+        story.append(Paragraph(optimized["summary"], body_style))
+
+    story.append(Paragraph("EDUCATION", section_style))
+    story.append(Paragraph(f"{data.education.college} — {data.education.branch} — CGPA {data.education.cgpa} — {data.education.year}", body_style))
+
+    if optimized.get("skills"):
+        story.append(Paragraph("TECHNICAL SKILLS", section_style))
+        story.append(Paragraph(" | ".join(optimized["skills"]), body_style))
+
+    if optimized.get("experience"):
+        story.append(Paragraph("EXPERIENCE", section_style))
+        for exp in optimized["experience"]:
+            story.append(Paragraph(f"{exp['role']} | {exp['company']} | {exp['duration']}", body_style))
+            for point in exp.get("points", []):
+                story.append(Paragraph(f"- {point}", bullet_style))
+            story.append(Spacer(1, 4))
+
+    if optimized.get("projects"):
+        story.append(Paragraph("PROJECTS", section_style))
+        for proj in optimized["projects"]:
+            story.append(Paragraph(f"{proj['name']} | {proj['tech']}", body_style))
+            for point in proj.get("points", []):
+                story.append(Paragraph(f"- {point}", bullet_style))
+            story.append(Spacer(1, 4))
+
+    if optimized.get("achievements"):
+        story.append(Paragraph("ACHIEVEMENTS", section_style))
+        for ach in optimized["achievements"]:
+            story.append(Paragraph(f"- {ach}", bullet_style))
+
+    doc.build(story)
+
+
+# Dispatch dict ab actual functions se fill karo (functions upar define ho chuke)
+TEMPLATE_BUILDERS.update({
+    "classic": build_classic_resume,
+    "modern": build_modern_resume,
+    "minimal": build_minimal_resume,
+    "elegant": build_elegant_resume,
+    "technical": build_technical_resume,
+})

@@ -97,21 +97,19 @@ async def ai_tutor(req: AITutorRequest):
         if req.code:
             question = f"Language: {req.language}\n\nCode:\n```\n{req.code}\n```\n\nQuestion: {req.question}"
 
-        # gemini_helper se call karo — caching automatic!
-        result = ask_raxx_ai(
+        # gemini_helper se call karo — ab ye seedha string return karta hai
+        answer = ask_raxx_ai(
             question=question,
             feature="code_review",
-            language="english",
+            language="en",
         )
 
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
+        if not answer:
+            raise HTTPException(status_code=500, detail="AI se empty response mila. Try again!")
 
         return {
             "status": "success",
-            "explanation": result["answer"],
-            "cache_read": result["cache_read"],
-            "tokens_used": result["tokens_used"],
+            "explanation": answer,
         }
 
     except HTTPException:
@@ -136,21 +134,19 @@ Code:
 {req.code}
 ```"""
 
-        # gemini_helper se call karo — caching automatic!
-        result = ask_raxx_ai(
+        # gemini_helper se call karo — ab ye seedha string return karta hai
+        answer = ask_raxx_ai(
             question=question,
             feature="code_review",
-            language="english",
+            language="en",
         )
 
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
+        if not answer:
+            raise HTTPException(status_code=500, detail="AI se empty response mila. Try again!")
 
         return {
             "status": "success",
-            "review": result["answer"],
-            "cache_read": result["cache_read"],
-            "tokens_used": result["tokens_used"],
+            "review": answer,
         }
 
     except HTTPException:
