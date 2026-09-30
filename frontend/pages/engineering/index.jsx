@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 // ─── CLAUDE-STYLE DARK MATTE PALETTE ───
 const C = {
   bg: "#0B0C0F",           // Claude-like deep dark gray
@@ -118,6 +120,56 @@ const ModernPreview = () => (
   </svg>
 );
 
+const ElegantPreview = () => (
+  <svg viewBox="0 0 120 160" style={{ width: "100%", height: "100%" }}>
+    <rect width="120" height="160" fill="#f8f8f8" rx="2"/>
+    <rect x="0" y="0" width="40" height="160" fill="#f1f5f9"/>
+    <rect x="8" y="12" width="24" height="3" fill="#0f172a" rx="1"/>
+    <rect x="8" y="18" width="28" height="2" fill="#64748b" rx="1"/>
+    <rect x="8" y="22" width="26" height="2" fill="#64748b" rx="1"/>
+    <rect x="8" y="34" width="24" height="3" fill="#0f172a" rx="1"/>
+    <rect x="8" y="40" width="28" height="2" fill="#64748b" rx="1"/>
+    <rect x="8" y="44" width="24" height="2" fill="#64748b" rx="1"/>
+    <rect x="8" y="56" width="20" height="3" fill="#0f172a" rx="1"/>
+    <rect x="8" y="62" width="26" height="2" fill="#64748b" rx="1"/>
+    <rect x="8" y="66" width="22" height="2" fill="#64748b" rx="1"/>
+    <rect x="48" y="10" width="60" height="6" fill="#0f172a" rx="1"/>
+    <rect x="48" y="24" width="20" height="3" fill="#0f172a" rx="1"/>
+    <rect x="48" y="30" width="65" height="2" fill="#ccc" rx="1"/>
+    <rect x="48" y="34" width="55" height="2" fill="#ccc" rx="1"/>
+    <rect x="48" y="46" width="30" height="3" fill="#0f172a" rx="1"/>
+    <rect x="48" y="52" width="65" height="2" fill="#ccc" rx="1"/>
+    <rect x="48" y="56" width="60" height="2" fill="#ccc" rx="1"/>
+    <rect x="48" y="66" width="26" height="3" fill="#0f172a" rx="1"/>
+    <rect x="48" y="72" width="65" height="2" fill="#ccc" rx="1"/>
+    <rect x="48" y="76" width="50" height="2" fill="#ccc" rx="1"/>
+  </svg>
+);
+
+const TechnicalPreview = () => (
+  <svg viewBox="0 0 120 160" style={{ width: "100%", height: "100%" }}>
+    <rect width="120" height="160" fill="white" rx="2"/>
+    <rect x="10" y="10" width="55" height="5" fill="#000" rx="1"/>
+    <rect x="10" y="18" width="95" height="2" fill="#333" rx="1"/>
+    <rect x="10" y="24" width="100" height="1" fill="#000"/>
+    <rect x="10" y="30" width="25" height="2.5" fill="#000" rx="1"/>
+    <rect x="10" y="35" width="100" height="1.5" fill="#999" rx="1"/>
+    <rect x="10" y="39" width="90" height="1.5" fill="#999" rx="1"/>
+    <rect x="10" y="46" width="35" height="2.5" fill="#000" rx="1"/>
+    <rect x="10" y="51" width="100" height="1.5" fill="#999" rx="1"/>
+    <rect x="10" y="58" width="45" height="2.5" fill="#000" rx="1"/>
+    <rect x="10" y="63" width="95" height="1.5" fill="#999" rx="1"/>
+    <rect x="10" y="67" width="85" height="1.5" fill="#999" rx="1"/>
+    <rect x="10" y="71" width="90" height="1.5" fill="#999" rx="1"/>
+    <rect x="10" y="78" width="30" height="2.5" fill="#000" rx="1"/>
+    <rect x="10" y="83" width="95" height="1.5" fill="#999" rx="1"/>
+    <rect x="10" y="87" width="80" height="1.5" fill="#999" rx="1"/>
+    <rect x="10" y="91" width="90" height="1.5" fill="#999" rx="1"/>
+    <rect x="10" y="98" width="35" height="2.5" fill="#000" rx="1"/>
+    <rect x="10" y="103" width="85" height="1.5" fill="#999" rx="1"/>
+  </svg>
+);
+
 const MinimalPreview = () => (
   <svg viewBox="0 0 120 160" style={{ width: "100%", height: "100%" }}>
     <rect width="120" height="160" fill="white" rx="2"/>
@@ -191,7 +243,7 @@ export default function EngineeringHub() {
   const [selectedTopic, setSelectedTopic] = useState('');
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
+    const userData = localStorage.getItem('raxx_user');
     if (!userData) { router.push('/login'); return; }
     setUser(JSON.parse(userData));
   }, [router]);
@@ -206,7 +258,7 @@ export default function EngineeringHub() {
     setResumeChatInput('');
     setResumeChatLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/engineering/resume-chat', {
+      const res = await fetch(`${API_BASE}/engineering/resume-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -234,6 +286,7 @@ export default function EngineeringHub() {
     setResumeLoading(true);
     try {
       const payload = {
+        user_id: user?.id,
         template: selectedTemplate,
         name: resumeForm.name,
         email: resumeForm.email,
@@ -251,7 +304,7 @@ export default function EngineeringHub() {
         projects: projects,
         achievements: resumeForm.achievements,
       };
-      const res = await fetch('http://localhost:8000/engineering/resume-generate', {
+      const res = await fetch(`${API_BASE}/engineering/resume-generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -275,7 +328,7 @@ export default function EngineeringHub() {
     setInterviewStarted(true);
     setInterviewLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/engineering/mock-interview', {
+      const res = await fetch(`${API_BASE}/engineering/mock-interview`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ company: interviewCompany, role: interviewRole, question_number: 1 }),
@@ -294,7 +347,7 @@ export default function EngineeringHub() {
     setInterviewAnswer('');
     setInterviewLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/engineering/mock-interview', {
+      const res = await fetch(`${API_BASE}/engineering/mock-interview`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -316,7 +369,7 @@ export default function EngineeringHub() {
     setQuestionsLoading(true);
     setCompanyQuestions([]);
     try {
-      const res = await fetch('http://localhost:8000/engineering/company-questions', {
+      const res = await fetch(`${API_BASE}/engineering/company-questions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ company, type: questionType }),
@@ -332,7 +385,7 @@ export default function EngineeringHub() {
     setSyllabusLoading(true);
     setSyllabus(null);
     try {
-      const res = await fetch('http://localhost:8000/engineering/branch-syllabus', {
+      const res = await fetch(`${API_BASE}/engineering/branch-syllabus`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ branch }),
@@ -348,7 +401,7 @@ export default function EngineeringHub() {
     setNotesLoading(true);
     setTopicNotes('');
     try {
-      const res = await fetch('http://localhost:8000/engineering/topic-notes', {
+      const res = await fetch(`${API_BASE}/engineering/topic-notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topic, branch: selectedBranch }),
@@ -545,6 +598,8 @@ export default function EngineeringHub() {
                   { key: 'classic', Preview: ClassicPreview, label: 'Classic' },
                   { key: 'modern', Preview: ModernPreview, label: 'Modern' },
                   { key: 'minimal', Preview: MinimalPreview, label: 'Minimal' },
+                  { key: 'elegant', Preview: ElegantPreview, label: 'Elegant' },
+                  { key: 'technical', Preview: TechnicalPreview, label: 'Technical' },
                 ].map(({ key, Preview, label: lbl }) => (
                   <button
                     key={key}
