@@ -454,28 +454,15 @@ def _should_use_rag(
     feature: str,
     question: str
 ) -> bool:
-
-    if feature in RAG_FEATURES:
-        return True
-
-    knowledge_keywords = {
-        "syllabus",
-        "chapter",
-        "topic",
-        "curriculum",
-        "book",
-        "database",
-        "db",
-        "stored",
-        "knowledge base",
-    }
-
-    question_lower = question.lower()
-
-    return any(
-        keyword in question_lower
-        for keyword in knowledge_keywords
-    )
+    # Pehle yahan ek keyword-based fallback bhi tha (agar question mein
+    # "topic", "chapter" jaise words hon) — lekin wo structured/JSON-only
+    # features (mocktest, career, etc.) ke prompts mein bhi accidentally
+    # trigger ho jata tha (e.g. JSON schema example mein "topic" field
+    # likha hona), jisse RAG context un strict-JSON tasks mein inject ho
+    # jata aur model invalid JSON return karne lagta — 500 error ka
+    # baais. RAG sirf explicitly listed features (doubt/notes/syllabus)
+    # ke liye hi chalna chahiye.
+    return feature in RAG_FEATURES
 
 
 # ============================================================
