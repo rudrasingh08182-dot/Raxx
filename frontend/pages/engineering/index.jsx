@@ -1,8 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import dynamic from 'next/dynamic';
+
+const Editor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+const CODE_LANGUAGES = [
+  { key: 'python', label: 'Python', monaco: 'python' },
+  { key: 'javascript', label: 'JavaScript', monaco: 'javascript' },
+  { key: 'java', label: 'Java', monaco: 'java' },
+  { key: 'c', label: 'C', monaco: 'c' },
+  { key: 'cpp', label: 'C++', monaco: 'cpp' },
+];
 
 // ─── CLAUDE-STYLE DARK MATTE PALETTE ───
 const C = {
@@ -233,6 +244,17 @@ export default function EngineeringHub() {
   const [questionType, setQuestionType] = useState('dsa');
   const [companyQuestions, setCompanyQuestions] = useState([]);
   const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Coding Workspace State
+  const [activeQuestion, setActiveQuestion] = useState(null);
+  const [workspaceLanguage, setWorkspaceLanguage] = useState('python');
+  const [workspaceCode, setWorkspaceCode] = useState('');
+  const [workspaceLoading, setWorkspaceLoading] = useState(false);
+  const [workspaceResult, setWorkspaceResult] = useState(null);
+  const [hintLoading, setHintLoading] = useState(false);
+  const [hints, setHints] = useState([]);
+  const [hintLevel, setHintLevel] = useState(1);
 
   // Branch Syllabus State
   const [selectedBranch, setSelectedBranch] = useState('');
@@ -372,12 +394,91 @@ export default function EngineeringHub() {
       const res = await fetch(`${API_BASE}/engineering/company-questions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ company, type: questionType }),
+        body: JSON.stringify({ company, type: questionType, exclude: [] }),
       });
       const data = await res.json();
       setCompanyQuestions(data.questions || []);
     } catch (err) { console.error(err); }
     setQuestionsLoading(false);
+  };
+
+  const loadMoreQuestions = async () => {
+    setLoadingMore(true);
+    try {
+      const res = await fetch(`${API_BASE}/engineering/company-questions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company: selectedCompany,
+          type: questionType,
+          exclude: companyQuestions.map(q => q.question),
+        }),
+      });
+      const data = await res.json();
+      setCompanyQuestions(prev => [...prev, ...(data.questions || [])]);
+    } catch (err) { console.error(err); }
+    setLoadingMore(false);
+  };
+
+  const openWorkspace = (q) => {
+    setActiveQuestion(q);
+    setWorkspaceCode('');
+    setWorkspaceResult(null);
+    setHints([]);
+    setHintLevel(1);
+  };
+
+  const closeWorkspace = () => {
+    setActiveQuestion(null);
+    setWorkspaceResult(null);
+    setHints([]);
+  };
+
+  const submitForReview = async () => {
+    if (!workspaceCode.trim()) { alert('Pehle kuch code likho!'); return; }
+    setWorkspaceLoading(true);
+    setWorkspaceResult(null);
+    try {
+      const res = await fetch(`${API_BASE}/engineering/evaluate-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company: selectedCompany,
+          question: activeQuestion.question,
+          language: workspaceLanguage,
+          code: workspaceCode,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) setWorkspaceResult(data.evaluation);
+      else alert(data.detail || 'Evaluation failed, try again!');
+    } catch (err) {
+      alert('Evaluation failed, try again!');
+    }
+    setWorkspaceLoading(false);
+  };
+
+  const getHint = async () => {
+    setHintLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/engineering/code-hint`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company: selectedCompany,
+          question: activeQuestion.question,
+          language: workspaceLanguage,
+          code: workspaceCode,
+          hint_level: hintLevel,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setHints(prev => [...prev, data.hint]);
+        setHintLevel(prev => prev + 1);
+      }
+    } catch (err) { console.error(err); }
+    setHintLoading(false);
   };
 
   const fetchSyllabus = async (branch) => {
@@ -948,7 +1049,11 @@ export default function EngineeringHub() {
 
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {companyQuestions.map((q, i) => (
-                  <div key={i} style={card}>
+                  <div
+                    key={i}
+                    onClick={() => questionType === 'dsa' && openWorkspace(q)}
+                    style={{ ...card, cursor: questionType === 'dsa' ? 'pointer' : 'default' }}
+                  >
                     <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                       <span style={{ fontSize: 12, fontWeight: 800, color: C.forestHi, marginTop: 2 }}>{i + 1}.</span>
                       <div style={{ flex: 1 }}>
@@ -967,11 +1072,24 @@ export default function EngineeringHub() {
                           </span>
                         )}
                         {q.tip && <p style={{ fontSize: 12, color: C.creamMute, margin: "8px 0 0 0" }}>💡 {q.tip}</p>}
+                        {questionType === 'dsa' && (
+                          <p style={{ fontSize: 11, color: C.forestHi, margin: "8px 0 0 0", fontWeight: 700 }}>💻 Tap to code this →</p>
+                        )}
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
+
+              {companyQuestions.length > 0 && (
+                <button
+                  onClick={loadMoreQuestions}
+                  disabled={loadingMore}
+                  style={{ ...btnSec, marginTop: 12, opacity: loadingMore ? 0.6 : 1 }}
+                >
+                  {loadingMore ? <><span style={spin} />&nbsp;Loading more...</> : '⬇️ Load More Questions'}
+                </button>
+              )}
             </div>
           )}
 
@@ -1068,13 +1186,129 @@ export default function EngineeringHub() {
                 ✕
               </button>
             </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+                       <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
               {notesLoading ? (
                 <p style={{ textAlign: "center", color: C.creamMute, fontSize: 14, padding: "40px 0" }}>Claude is generating notes...</p>
               ) : (
                 <pre style={{ color: C.cream, fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-wrap", fontFamily: "inherit", margin: 0 }}>
                   {topicNotes}
                 </pre>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CODING WORKSPACE MODAL */}
+      {activeQuestion && (
+        <div style={{
+          position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.9)",
+          zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center",
+        }}>
+          <div style={{
+            width: "100%", maxWidth: 480, maxHeight: "92vh",
+            backgroundColor: C.surface, borderTop: `1px solid ${C.border}`,
+            borderRadius: "24px 24px 0 0", display: "flex", flexDirection: "column", overflow: "hidden",
+          }}>
+            <div style={{
+              padding: "14px 16px", borderBottom: `1px solid ${C.border}`,
+              display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+              backgroundColor: C.surfaceHi, gap: 10,
+            }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: C.cream, margin: 0, lineHeight: 1.5 }}>{activeQuestion.question}</p>
+              <button onClick={closeWorkspace} style={{ background: "none", border: "none", color: C.creamMute, fontSize: 20, cursor: "pointer", flexShrink: 0 }}>✕</button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+              {/* Language selector */}
+              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 10, marginBottom: 10 }}>
+                {CODE_LANGUAGES.map((l) => (
+                  <button key={l.key} onClick={() => setWorkspaceLanguage(l.key)} style={chip(workspaceLanguage === l.key, C.forestHi)}>
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Editor */}
+              <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.border}`, marginBottom: 12 }}>
+                <Editor
+                  height="260px"
+                  language={CODE_LANGUAGES.find(l => l.key === workspaceLanguage)?.monaco || 'python'}
+                  theme="vs-dark"
+                  value={workspaceCode}
+                  onChange={(val) => setWorkspaceCode(val || '')}
+                  options={{ fontSize: 13, minimap: { enabled: false }, scrollBeyondLastLine: false, padding: { top: 12 } }}
+                />
+              </div>
+
+              {/* Hints */}
+              {hints.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+                  {hints.map((h, i) => (
+                    <div key={i} style={{ ...card, backgroundColor: `${C.gold}10`, border: `1px solid ${C.gold}30`, margin: 0 }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: C.gold, margin: "0 0 4px 0" }}>💡 Hint {i + 1}</p>
+                      <p style={{ fontSize: 13, color: C.cream, margin: 0, lineHeight: 1.6 }}>{h}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                <button onClick={getHint} disabled={hintLoading} style={{ ...btnSec, opacity: hintLoading ? 0.6 : 1 }}>
+                  {hintLoading ? <><span style={spin} />&nbsp;...</> : '💡 Get Hint'}
+                </button>
+                <button onClick={submitForReview} disabled={workspaceLoading} style={{ ...btnPri, backgroundColor: C.forestHi, boxShadow: `0 4px 20px ${C.forestHi}25`, opacity: workspaceLoading ? 0.6 : 1 }}>
+                  {workspaceLoading ? <><span style={spin} />&nbsp;Evaluating...</> : '✅ Submit for AI Review'}
+                </button>
+              </div>
+
+              {/* Result */}
+              {workspaceResult && (
+                <div style={card}>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                    <span style={{
+                      fontSize: 11, fontWeight: 800, padding: "5px 12px", borderRadius: 20,
+                      backgroundColor: workspaceResult.correctness === 'Correct' ? `${C.green}18` : workspaceResult.correctness === 'Partially Correct' ? `${C.gold}18` : `${C.red}18`,
+                      color: workspaceResult.correctness === 'Correct' ? C.green : workspaceResult.correctness === 'Partially Correct' ? C.gold : C.red,
+                    }}>
+                      {workspaceResult.correctness === 'Correct' ? '✅' : workspaceResult.correctness === 'Partially Correct' ? '⚠️' : '❌'} {workspaceResult.correctness}
+                    </span>
+                    <span style={{
+                      fontSize: 11, fontWeight: 800, padding: "5px 12px", borderRadius: 20,
+                      backgroundColor: workspaceResult.approach === 'Optimal' ? `${C.green}18` : workspaceResult.approach === 'Brute Force' ? `${C.terra}18` : `${C.gold}18`,
+                      color: workspaceResult.approach === 'Optimal' ? C.green : workspaceResult.approach === 'Brute Force' ? C.terra : C.gold,
+                    }}>
+                      {workspaceResult.approach}
+                    </span>
+                  </div>
+
+                  <p style={{ fontSize: 11, color: C.creamMute, margin: "0 0 10px 0" }}>
+                    ⏱️ Time: <b style={{ color: C.cream }}>{workspaceResult.time_complexity}</b> &nbsp;|&nbsp; 💾 Space: <b style={{ color: C.cream }}>{workspaceResult.space_complexity}</b>
+                  </p>
+
+                  <p style={{ fontSize: 13, color: C.cream, lineHeight: 1.6, margin: "0 0 10px 0" }}>{workspaceResult.explanation}</p>
+
+                  {workspaceResult.bugs_found?.length > 0 && (
+                    <div style={{ marginBottom: 10 }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: C.red, margin: "0 0 4px 0" }}>🐛 Bugs Found</p>
+                      {workspaceResult.bugs_found.map((b, i) => (
+                        <p key={i} style={{ fontSize: 12, color: C.creamMute, margin: "2px 0" }}>• {b}</p>
+                      ))}
+                    </div>
+                  )}
+
+                  {workspaceResult.improvement_suggestions && (
+                    <div style={{ marginBottom: 10 }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: C.gold, margin: "0 0 4px 0" }}>📈 Improve</p>
+                      <p style={{ fontSize: 12, color: C.creamMute, margin: 0, lineHeight: 1.5 }}>{workspaceResult.improvement_suggestions}</p>
+                    </div>
+                  )}
+
+                  {workspaceResult.encouragement && (
+                    <p style={{ fontSize: 13, color: C.terra, fontWeight: 600, margin: 0, textAlign: "center" }}>💪 {workspaceResult.encouragement}</p>
+                  )}
+                </div>
               )}
             </div>
           </div>
