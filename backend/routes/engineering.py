@@ -77,6 +77,20 @@ class InterviewData(BaseModel):
 class CompanyQuestionsData(BaseModel):
     company: str
     type: str
+    exclude: Optional[List[str]] = []
+
+class EvaluateCodeData(BaseModel):
+    company: str
+    question: str
+    language: str
+    code: str
+
+class CodeHintData(BaseModel):
+    company: str
+    question: str
+    language: str = ""
+    code: str = ""
+    hint_level: int = 1
 
 class SyllabusData(BaseModel):
     branch: str
@@ -379,12 +393,25 @@ Question number: {data.question_number}"""
 @router.post("/company-questions")
 async def company_questions(data: CompanyQuestionsData):
     try:
+        exclude_block = ""
+        if data.exclude:
+            # Prompt ko bahut lamba hone se bachane ke liye sirf last 25 rakho,
+            # har ek 100 chars tak truncate karo
+            recent_exclude = data.exclude[-25:]
+            trimmed = [q[:100] for q in recent_exclude]
+            exclude_block = "\n\nAlready shown (do NOT repeat these or close variants):\n" + \
+                "\n".join(f"- {q}" for q in trimmed)
+
         if data.type == "dsa":
-            question = f"""List 8 most asked DSA interview questions at {data.company}.
+            question = f"""List 8 more frequently asked DSA interview questions at {data.company}.
+Make sure these are genuinely different from any already shown.{exclude_block}
+
 Return ONLY a JSON array:
 [{{"question": "...", "difficulty": "Easy/Medium/Hard", "topic": "Arrays/Trees/DP etc"}}]"""
         else:
-            question = f"""List 8 most asked HR interview questions at {data.company}.
+            question = f"""List 8 more frequently asked HR interview questions at {data.company}.
+Make sure these are genuinely different from any already shown.{exclude_block}
+
 Return ONLY a JSON array:
 [{{"question": "...", "tip": "how to answer this"}}]"""
 
@@ -529,8 +556,125 @@ Keep response concise and helpful."""
 
 
 # ═══════════════════════════════════════
-# PDF BUILDERS — Same as before (no AI)
+# CODE EVALUATION — AI judges correctness + approach (brute-force/optimal)
+# Future: Judge0 wiring yahan add hoga actual execution ke liye
 # ═══════════════════════════════════════
+
+@router.post("/evaluate-code")
+async def evaluate_code(data: EvaluateCodeData):
+    try:
+        if not data.code.strip():
+            raise HTTPException(status_code=400, detail="Code is empty!")
+
+        question = f"""You are a strict but fair technical interviewer at {data.company}, reviewing a candidate's code submission.
+
+Interview Question: {data.question}
+Language: {data.language}
+
+Candidate's Code:
+````{data.language}
+{data.code}
+````
+
+Evaluate this code carefully. Check correctness by mentally tracing through
+the logic on a few test cases (including edge cases like empty input,
+single element, duplicates). Classify the approach honestly.
+
+Respond ONLY in this JSON format, no extra text:
+{{
+  "correctness": "Correct" | "Wrong" | "Partially Correct",
+  "approach": "Brute Force" | "Optimal" | "Suboptimal" | "Unclear",
+  "time_complexity": "e.g. O(n)",
+  "space_complexity": "e.g. O(1)",
+  "bugs_found": ["specific bug 1", "specific bug 2"],
+  "explanation": "2-3 lines on what the code does and whether the logic is sound",
+  "improvement_suggestions": "specific suggestion to reach optimal approach/complexity, empty string if already optimal",
+  "encouragement": "short motivational line in Hindi or English"
+}}"""
+
+        answer = ask_raxx_ai(
+            question=question,
+            feature="mocktest",
+            language="en",
+        )
+
+        if not answer:
+            raise HTTPException(status_code=500, detail="AI se empty response mila. Try again!")
+
+        raw = answer.strip().replace("```json", "").replace("```", "").strip()
+        evaluation = json.loads(raw)
+
+        return {
+            "success": True,
+            "evaluation": evaluation,
+        }
+
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Failed to parse evaluation. Try again.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ═══════════════════════════════════════
+# CODE HINT — progressive hints, kabhi full solution nahi deta
+# ═══════════════════════════════════════
+
+@router.post("/code-hint")
+async def code_hint(data: CodeHintData):
+    try:
+        code_block = f"""
+Student's current code attempt (may be empty or incomplete):
+````{data.language}
+{data.code}
+```""" if data.code.strip() else "\nStudent hasn't written any code yet."
+
+        question = f"""You are a helpful coding mentor at {data.company}. A student is stuck on
+this interview question and wants a HINT — not the full solution.
+
+Interview Question: {data.question}
+Language: {data.language}
+{code_block}
+
+This is hint request number {data.hint_level} for this question. Give a hint
+appropriate to this level — level 1 should nudge toward the right approach or
+data structure, higher levels can be more specific about the algorithm steps,
+but NEVER write actual code or the full solution, at any level.
+
+Respond ONLY in this JSON format, no extra text:
+{{
+  "hint": "a short, specific hint (2-4 sentences) that guides their thinking without writing code for them"
+}}"""
+
+        answer = ask_raxx_ai(
+            question=question,
+            feature="mocktest",
+            language="en",
+        )
+
+        if not answer:
+            raise HTTPException(status_code=500, detail="AI se empty response mila. Try again!")
+
+        raw = answer.strip().replace("```json", "").replace("```", "").strip()
+        result = json.loads(raw)
+
+        return {
+            "success": True,
+            "hint": result.get("hint", ""),
+        }
+
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Failed to generate hint. Try again.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ═══════════════════════════════════════
+# PDF BUILDERS — Same as before (no AI)
+# ----
 
 def build_classic_resume(filepath, data, optimized):
     doc = SimpleDocTemplate(filepath, pagesize=A4,
