@@ -30,58 +30,52 @@ class CodeReviewRequest(BaseModel):
     language: str
 
 # ── Code Runner — Judge0 API (AI nahi, unchanged) ──
+# Piston API (emkc.org) — bilkul free, koi API key/signup nahi chahiye.
+# Judge0 jaisa 2-step submit+poll nahi, ek hi call mein result mil jata hai.
+PISTON_LANGUAGE_MAP = {
+    "python": {"language": "python", "version": "3.10.0"},
+    "javascript": {"language": "javascript", "version": "18.15.0"},
+    "java": {"language": "java", "version": "15.0.2"},
+    "c": {"language": "c", "version": "10.2.0"},
+    "cpp": {"language": "cpp", "version": "10.2.0"},
+}
+
 @router.post("/run")
 async def run_code(req: RunCodeRequest):
     try:
-        language_id = LANGUAGE_IDS.get(req.language.lower())
-        if not language_id:
+        lang_config = PISTON_LANGUAGE_MAP.get(req.language.lower())
+        if not lang_config:
             raise HTTPException(status_code=400, detail="Unsupported language!")
 
-        encoded_code = base64.b64encode(req.code.encode()).decode()
-        encoded_stdin = base64.b64encode(req.stdin.encode()).decode() if req.stdin else ""
-
-        headers = {
-            "Content-Type": "application/json",
-            "X-RapidAPI-Key": os.getenv("JUDGE0_API_KEY"),
-            "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com"
-        }
-
         payload = {
-            "language_id": language_id,
-            "source_code": encoded_code,
-            "stdin": encoded_stdin,
-            "cpu_time_limit": 5,
-            "memory_limit": 256000,
+            "language": lang_config["language"],
+            "version": lang_config["version"],
+            "files": [{"content": req.code}],
+            "stdin": req.stdin or "",
         }
 
         async with httpx.AsyncClient() as client_http:
-            submit_res = await client_http.post(
-                "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=true",
+            res = await client_http.post(
+                "https://emkc.org/api/v2/piston/execute",
                 json=payload,
-                headers=headers,
                 timeout=30
             )
-            result = submit_res.json()
+            result = res.json()
 
-        output = ""
-        error = ""
+        run_result = result.get("run", {})
+        compile_result = result.get("compile", {})
 
-        if result.get("stdout"):
-            output = base64.b64decode(result["stdout"]).decode()
-        if result.get("stderr"):
-            error = base64.b64decode(result["stderr"]).decode()
-        if result.get("compile_output"):
-            error = base64.b64decode(result["compile_output"]).decode()
-
-        status = result.get("status", {}).get("description", "Unknown")
+        output = run_result.get("stdout", "")
+        error = run_result.get("stderr", "") or compile_result.get("stderr", "")
+        exit_code = run_result.get("code", 0)
 
         return {
             "status": "success",
             "output": output,
             "error": error,
-            "execution_status": status,
-            "time": result.get("time", ""),
-            "memory": result.get("memory", ""),
+            "execution_status": "Accepted" if exit_code == 0 and not error else "Runtime Error",
+            "time": "",
+            "memory": "",
         }
 
     except Exception as e:
