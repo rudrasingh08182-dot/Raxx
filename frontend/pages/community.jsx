@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export default function Community() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -16,9 +18,10 @@ export default function Community() {
   const [newComment, setNewComment] = useState({});
   const [loading, setLoading] = useState(false);
   const [postLoading, setPostLoading] = useState(false);
+  const [replyingTo, setReplyingTo] = useState({}); // { postId: { commentId, userName } }
 
   useEffect(() => {
-    const userData = localStorage.getItem("user");
+    const userData = localStorage.getItem("raxx_user");
     if (!userData) {
       router.push("/login");
       return;
@@ -32,7 +35,7 @@ export default function Community() {
   // Fetch all posts
   const fetchPosts = async () => {
     try {
-      const res = await fetch("http://localhost:8000/community/posts");
+      const res = await fetch(`${API_BASE}/community/posts`);
       const data = await res.json();
       if (data.success) setPosts(data.posts);
     } catch (err) {
@@ -44,7 +47,7 @@ export default function Community() {
   const fetchNotifications = async (userId) => {
     try {
       const res = await fetch(
-        `http://localhost:8000/community/notifications/${userId}`
+        `${API_BASE}/community/notifications/${userId}`
       );
       const data = await res.json();
       if (data.success) setNotifications(data.notifications);
@@ -58,7 +61,7 @@ export default function Community() {
     if (!newPost.trim()) return;
     setPostLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/community/post", {
+      const res = await fetch(`${API_BASE}/community/post`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id, content: newPost }),
@@ -77,7 +80,7 @@ export default function Community() {
   // Toggle like
   const handleLike = async (postId) => {
     try {
-      await fetch("http://localhost:8000/community/like", {
+      await fetch(`${API_BASE}/community/like`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id, post_id: postId }),
@@ -96,7 +99,7 @@ export default function Community() {
     if (!isExpanded) {
       try {
         const res = await fetch(
-          `http://localhost:8000/community/comments/${postId}`
+          `${API_BASE}/community/comments/${postId}`
         );
         const data = await res.json();
         if (data.success) {
@@ -112,19 +115,21 @@ export default function Community() {
   const handleComment = async (postId) => {
     if (!newComment[postId]?.trim()) return;
     try {
-      await fetch("http://localhost:8000/community/comment", {
+      await fetch(`${API_BASE}/community/comment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: user.id,
           post_id: postId,
           content: newComment[postId],
+          parent_comment_id: replyingTo[postId]?.commentId || null,
         }),
       });
       setNewComment((prev) => ({ ...prev, [postId]: "" }));
+      setReplyingTo((prev) => ({ ...prev, [postId]: null }));
       // Refresh comments
       const res = await fetch(
-        `http://localhost:8000/community/comments/${postId}`
+        `${API_BASE}/community/comments/${postId}`
       );
       const data = await res.json();
       if (data.success) {
@@ -140,7 +145,7 @@ export default function Community() {
   const handleOpenNotifications = async () => {
     setShowNotifications(!showNotifications);
     if (!showNotifications && notifications.length > 0) {
-      await fetch("http://localhost:8000/community/notifications/read", {
+      await fetch(`${API_BASE}/community/notifications/read`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id }),
@@ -226,6 +231,8 @@ export default function Community() {
                             </span>
                             {n.type === "like"
                               ? " liked your post"
+                              : n.type === "reply"
+                              ? " replied to your comment"
                               : " commented on your post"}
                           </p>
                           <p className="text-[10px] text-[#557861] mt-1 font-mono">
@@ -326,35 +333,114 @@ export default function Community() {
                   {/* Comments Section */}
                   {expandedComments[post.id] && (
                     <div className="mt-3 border-t border-[#1a3023] pt-3 space-y-3">
-                      {/* Comments Feed */}
-                      <div className="space-y-2.5">
-                        {(comments[post.id] || []).length === 0 ? (
+                      {/* Comments Feed — top-level comments + nested replies */}
+                      <div className="space-y-3">
+                        {(comments[post.id] || []).filter((c) => !c.parent_comment_id).length === 0 ? (
                           <p className="text-[#557861] text-[11px] text-center py-2">
                             No comments yet. Start the conversation!
                           </p>
                         ) : (
-                          (comments[post.id] || []).map((c) => (
-                            <div key={c.id} className="flex gap-2.5">
-                              <div className="w-6 h-6 rounded-lg bg-[#1a2f23] text-emerald-400 font-bold flex items-center justify-center text-[10px] shrink-0">
-                                {c.users?.name?.charAt(0).toUpperCase() || "?"}
-                              </div>
-                              <div className="bg-[#09120d] border border-[#162c1f] rounded-2xl p-2.5 flex-1">
-                                <p className="text-[11px] font-bold text-[#f0ad73]">
-                                  {c.users?.name || "Student"}
-                                </p>
-                                <p className="text-xs text-[#d4e8db] mt-0.5">
-                                  {c.content}
-                                </p>
-                                <p className="text-[9px] text-[#4d6d56] font-mono mt-1">
-                                  {formatTime(c.created_at)}
-                                </p>
-                              </div>
-                            </div>
-                          ))
+                          (comments[post.id] || [])
+                            .filter((c) => !c.parent_comment_id)
+                            .map((c) => {
+                              const replies = (comments[post.id] || []).filter(
+                                (r) => r.parent_comment_id === c.id
+                              );
+                              return (
+                                <div key={c.id}>
+                                  {/* Top-level comment */}
+                                  <div className="flex gap-2.5">
+                                    <div className="w-6 h-6 rounded-lg bg-[#1a2f23] text-emerald-400 font-bold flex items-center justify-center text-[10px] shrink-0">
+                                      {c.users?.name?.charAt(0).toUpperCase() || "?"}
+                                    </div>
+                                    <div className="flex-1">
+                                      <div className="bg-[#09120d] border border-[#162c1f] rounded-2xl p-2.5">
+                                        <p className="text-[11px] font-bold text-[#f0ad73]">
+                                          {c.users?.name || "Student"}
+                                        </p>
+                                        <p className="text-xs text-[#d4e8db] mt-0.5">
+                                          {c.content}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center gap-3 mt-1 px-1">
+                                        <p className="text-[9px] text-[#4d6d56] font-mono">
+                                          {formatTime(c.created_at)}
+                                        </p>
+                                        <button
+                                          onClick={() =>
+                                            setReplyingTo((prev) => ({
+                                              ...prev,
+                                              [post.id]: { commentId: c.id, userName: c.users?.name || "Student" },
+                                            }))
+                                          }
+                                          className="text-[10px] font-bold text-[#7ea38a] hover:text-[#f0ad73] transition"
+                                        >
+                                          Reply
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Nested replies — thoda indent karke dikhate hain */}
+                                  {replies.length > 0 && (
+                                    <div className="ml-8 mt-2 space-y-2 border-l border-[#1a3023] pl-3">
+                                      {replies.map((r) => (
+                                        <div key={r.id} className="flex gap-2">
+                                          <div className="w-5 h-5 rounded-lg bg-[#1a2f23] text-emerald-400 font-bold flex items-center justify-center text-[9px] shrink-0">
+                                            {r.users?.name?.charAt(0).toUpperCase() || "?"}
+                                          </div>
+                                          <div className="flex-1">
+                                            <div className="bg-[#09120d] border border-[#162c1f] rounded-2xl p-2.5">
+                                              <p className="text-[10px] font-bold text-[#f0ad73]">
+                                                {r.users?.name || "Student"}
+                                              </p>
+                                              <p className="text-[11px] text-[#d4e8db] mt-0.5">
+                                                {r.content}
+                                              </p>
+                                            </div>
+                                            <div className="flex items-center gap-3 mt-1 px-1">
+                                              <p className="text-[9px] text-[#4d6d56] font-mono">
+                                                {formatTime(r.created_at)}
+                                              </p>
+                                              <button
+                                                onClick={() =>
+                                                  setReplyingTo((prev) => ({
+                                                    ...prev,
+                                                    [post.id]: { commentId: c.id, userName: r.users?.name || "Student" },
+                                                  }))
+                                                }
+                                                className="text-[10px] font-bold text-[#7ea38a] hover:text-[#f0ad73] transition"
+                                              >
+                                                Reply
+                                              </button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })
                         )}
                       </div>
 
-                      {/* Add Comment Bar */}
+                      {/* Replying-to indicator */}
+                      {replyingTo[post.id] && (
+                        <div className="flex items-center justify-between bg-[#132219] border border-[#1e3827] rounded-xl px-3 py-1.5">
+                          <span className="text-[10px] text-[#7ea38a]">
+                            Replying to <span className="font-bold text-[#f0ad73]">{replyingTo[post.id].userName}</span>
+                          </span>
+                          <button
+                            onClick={() => setReplyingTo((prev) => ({ ...prev, [post.id]: null }))}
+                            className="text-[#5b8067] hover:text-white text-xs"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Add Comment / Reply Bar */}
                       <div className="flex gap-2">
                         <input
                           type="text"
@@ -368,7 +454,7 @@ export default function Community() {
                           onKeyDown={(e) =>
                             e.key === "Enter" && handleComment(post.id)
                           }
-                          placeholder="Write a comment..."
+                          placeholder={replyingTo[post.id] ? `Reply to ${replyingTo[post.id].userName}...` : "Write a comment..."}
                           className="flex-1 bg-[#09120d] border border-[#172d20] rounded-xl px-3 py-2 text-xs text-white placeholder-[#3b5944] outline-none focus:border-[#b8523b] transition"
                         />
                         <button

@@ -84,6 +84,8 @@ export default function CodingEditorMobile() {
         setError(data.error || "");
         setExecTime(data.time || "");
         setExecStatus(data.execution_status || "");
+      } else if (res.status === 503) {
+        setOutput("🚧 " + data.detail);
       } else {
         setError(data.detail || "Failed to run code!");
       }
