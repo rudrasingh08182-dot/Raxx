@@ -25,6 +25,7 @@ class CommentCreate(BaseModel):
     user_id: str
     post_id: str
     content: str
+    parent_comment_id: str | None = None  # agar kisi comment ka reply hai
 
 class NotificationRead(BaseModel):
     user_id: str
@@ -102,30 +103,38 @@ async def toggle_like(data: LikeToggle):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Add a comment
+# Add a comment (ya reply to a comment, agar parent_comment_id diya ho)
 @router.post("/comment")
 async def add_comment(data: CommentCreate):
     try:
         result = supabase.table("community_comments").insert({
             "post_id": data.post_id,
             "user_id": data.user_id,
-            "content": data.content
+            "content": data.content,
+            "parent_comment_id": data.parent_comment_id,
         }).execute()
 
-        # Get post owner
-        post = supabase.table("community_posts").select("user_id").eq(
-            "id", data.post_id
-        ).execute()
+        # Notification kise bhejni hai — agar reply hai to comment ke
+        # original author ko, warna post ke owner ko
+        if data.parent_comment_id:
+            parent = supabase.table("community_comments").select("user_id").eq(
+                "id", data.parent_comment_id
+            ).execute()
+            receiver_id = parent.data[0]["user_id"] if parent.data else None
+            notif_type = "reply"
+        else:
+            post = supabase.table("community_posts").select("user_id").eq(
+                "id", data.post_id
+            ).execute()
+            receiver_id = post.data[0]["user_id"] if post.data else None
+            notif_type = "comment"
 
-        post_owner_id = post.data[0]["user_id"]
-
-        # Send notification (only if not commenting on own post)
-        if post_owner_id != data.user_id:
+        if receiver_id and receiver_id != data.user_id:
             supabase.table("community_notifications").insert({
-                "receiver_id": post_owner_id,
+                "receiver_id": receiver_id,
                 "sender_id": data.user_id,
                 "post_id": data.post_id,
-                "type": "comment"
+                "type": notif_type
             }).execute()
 
         return {"success": True, "comment": result.data[0]}
