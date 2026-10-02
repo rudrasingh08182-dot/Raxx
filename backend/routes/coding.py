@@ -33,23 +33,23 @@ class CodeReviewRequest(BaseModel):
 # Piston API (emkc.org) — bilkul free, koi API key/signup nahi chahiye.
 # Judge0 jaisa 2-step submit+poll nahi, ek hi call mein result mil jata hai.
 PISTON_LANGUAGE_MAP = {
-    "python": {"language": "python", "version": "3.10.0"},
-    "javascript": {"language": "javascript", "version": "18.15.0"},
-    "java": {"language": "java", "version": "15.0.2"},
-    "c": {"language": "c", "version": "10.2.0"},
-    "cpp": {"language": "cpp", "version": "10.2.0"},
+    "python": "python",
+    "javascript": "javascript",
+    "java": "java",
+    "c": "c",
+    "cpp": "cpp",
 }
 
 @router.post("/run")
 async def run_code(req: RunCodeRequest):
     try:
-        lang_config = PISTON_LANGUAGE_MAP.get(req.language.lower())
-        if not lang_config:
+        piston_lang = PISTON_LANGUAGE_MAP.get(req.language.lower())
+        if not piston_lang:
             raise HTTPException(status_code=400, detail="Unsupported language!")
 
         payload = {
-            "language": lang_config["language"],
-            "version": lang_config["version"],
+            "language": piston_lang,
+            "version": "*",  # jo bhi latest version Piston ke paas available ho wahi use karo
             "files": [{"content": req.code}],
             "stdin": req.stdin or "",
         }
@@ -62,8 +62,22 @@ async def run_code(req: RunCodeRequest):
             )
             result = res.json()
 
-        run_result = result.get("run", {})
-        compile_result = result.get("compile", {})
+        print(f"[coding/run] Piston response: {result}", flush=True)  # debug — baad mein hata sakte ho
+
+        # Piston kabhi top-level error dega (e.g. unsupported language/version)
+        # jisme "run" key hoti hi nahi — pehle yahi check karo
+        if "message" in result and "run" not in result:
+            return {
+                "status": "success",
+                "output": "",
+                "error": f"Execution engine error: {result['message']}",
+                "execution_status": "Error",
+                "time": "",
+                "memory": "",
+            }
+
+        run_result = result.get("run", {}) or {}
+        compile_result = result.get("compile", {}) or {}
 
         output = run_result.get("stdout", "")
         error = run_result.get("stderr", "") or compile_result.get("stderr", "")
