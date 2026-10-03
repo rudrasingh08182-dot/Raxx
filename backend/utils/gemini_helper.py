@@ -274,6 +274,9 @@ def _build_rag_context(
         )
 
         print(f"[RAG] retrieval returned {len(results) if results else 0} chunk(s) for: {question[:50]}", flush=True)
+        if results:
+            for r in results:
+                print(f"    -> {r.get('title', 'Untitled')} (similarity={r.get('similarity')})", flush=True)
 
         if not results:
             return ""
