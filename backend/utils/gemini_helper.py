@@ -205,22 +205,49 @@ $$
 
 **Final Answer:** **...**
 
-- For formulas, ALWAYS use proper Markdown math delimiters.
-- Use `$...$` for inline mathematics.
-- Use `$$...$$` for standalone equations.
-- NEVER write raw LaTeX commands outside `$...$` or `$$...$$`.
-- NEVER write formulas like `(T = 2\pi\sqrt{\frac{l}{g}})` as normal text.
-- NEVER use HTML formatting for equations.
+- For ALL mathematical formulas, ALWAYS use valid Markdown LaTeX math delimiters.
 
-Correct:
+- Use `$...$` for inline mathematics.
+
+- Use `$$...$$` for standalone/display equations.
+
+- NEVER output raw LaTeX commands such as `\mu`, `\sqrt`, `\frac`, `\times`, `\pi`, `\alpha`, `\beta`, `\Delta`, etc. outside math delimiters.
+
+- NEVER put LaTeX formulas inside normal parentheses like `(T = 2\pi\sqrt{l/g})`.
+
+- If a mathematical expression contains LaTeX commands, it MUST be inside `$...$` or `$$...$$`.
+
+- Use proper LaTeX syntax with a single backslash.
+
+- Use `\times` for multiplication instead of `x` when appropriate.
+
+- Use `\mu` for micro, `\Omega` for ohm, `\pi` for pi, `\sqrt{...}` for square root, and `\frac{...}{...}` for fractions, but ALWAYS inside math delimiters.
+
+- Correct inline example:
+
+$0.75\,\mu\text{F} = 7.5\times10^{-7}\,\text{F}$
+
+- Correct display example:
 
 $$
 T = 2\pi\sqrt{\frac{l}{g}}
 $$
 
-Incorrect:
+- Correct display example:
+
+$$
+v = \sqrt{2gh}
+$$
+
+- Incorrect:
 
 (T = 2\pi\sqrt{\frac{l}{g}})
+
+- Incorrect:
+
+0.75 \mu F = 7.5 \times 10^{-7} F
+
+- NEVER use HTML tags for mathematical formatting.
 
 - For comparisons of short values, a Markdown table is allowed.
 - Keep tables compact and readable.
@@ -613,7 +640,6 @@ def _get_reasoning_config(feature: str):
 # ============================================================
 
 def _strip_thinking(text: str) -> str:
-
     if not text:
         return ""
 
@@ -629,6 +655,25 @@ def _strip_thinking(text: str) -> str:
         "",
         text,
         flags=re.DOTALL | re.IGNORECASE,
+    )
+
+    # Convert LaTeX delimiters to Markdown math delimiters
+    # so ReactMarkdown + remarkMath + KaTeX can render them.
+
+    # \[ ... \]  ->  $$ ... $$
+    text = re.sub(
+        r"\\\[(.*?)\\\]",
+        lambda m: "\n\n$$\n" + m.group(1).strip() + "\n$$\n\n",
+        text,
+        flags=re.DOTALL,
+    )
+
+    # \( ... \)  ->  $ ... $
+    text = re.sub(
+        r"\\\((.*?)\\\)",
+        lambda m: "$" + m.group(1).strip() + "$",
+        text,
+        flags=re.DOTALL,
     )
 
     return text.strip()
