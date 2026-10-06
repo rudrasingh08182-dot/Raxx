@@ -2,6 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/router";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 
 const subjects = [
   "All Subjects", "Mathematics", "Physics", "Chemistry",
@@ -28,6 +31,26 @@ export default function DoubtSolver() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const cleanMarkdown = (text) => {
+    if (!text) return "";
+
+    let cleaned = text;
+
+    // Remove HTML line breaks
+    cleaned = cleaned.replace(/\\?<br\s*\/?>/gi, "\n\n");
+
+    // Remove HTML paragraph tags
+    cleaned = cleaned.replace(/<\/?p>/gi, "\n\n");
+
+    // Decode common HTML space
+    cleaned = cleaned.replace(/&nbsp;/gi, " ");
+
+    // Remove excessive blank lines
+    cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+
+    return cleaned.trim();
+  };
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -383,11 +406,12 @@ export default function DoubtSolver() {
                       style={{ background: c.surfaceElevated, border: `1px solid ${c.border}` }}
                     >
                       <div
-  className="text-sm leading-relaxed"
+  className="text-[14px] leading-7"
   style={{ color: c.textMuted }}
 >
   <ReactMarkdown
-    remarkPlugins={[remarkGfm]}
+    remarkPlugins={[remarkGfm, remarkMath]}
+    rehypePlugins={[rehypeKatex]}
     components={{
       h1: ({ children }) => (
         <h1
@@ -400,7 +424,7 @@ export default function DoubtSolver() {
 
       h2: ({ children }) => (
         <h2
-          className="text-xl font-bold mt-4 mb-2"
+          className="text-xl font-bold mt-5 mb-3"
           style={{ color: c.text }}
         >
           {children}
@@ -409,7 +433,7 @@ export default function DoubtSolver() {
 
       h3: ({ children }) => (
         <h3
-          className="text-lg font-bold mt-3 mb-2"
+          className="text-lg font-bold mt-5 mb-3"
           style={{ color: c.text }}
         >
           {children}
@@ -417,7 +441,7 @@ export default function DoubtSolver() {
       ),
 
       p: ({ children }) => (
-        <p className="mb-3 leading-7">
+        <p className="mb-4 leading-7">
           {children}
         </p>
       ),
@@ -444,9 +468,58 @@ export default function DoubtSolver() {
       ),
 
       li: ({ children }) => (
-        <li className="leading-7">
+        <li className="leading-7 mb-1">
           {children}
         </li>
+      ),
+
+      table: ({ children }) => (
+        <div
+          className="w-full overflow-x-auto mb-4 rounded-xl"
+          style={{
+            border: `1px solid ${c.border}`,
+          }}
+        >
+          <table className="w-full text-sm border-collapse">
+            {children}
+          </table>
+        </div>
+      ),
+
+      thead: ({ children }) => (
+        <thead style={{ background: c.hover }}>
+          {children}
+        </thead>
+      ),
+
+      tbody: ({ children }) => (
+        <tbody>
+          {children}
+        </tbody>
+      ),
+
+      tr: ({ children }) => (
+        <tr style={{ borderBottom: `1px solid ${c.border}` }}>
+          {children}
+        </tr>
+      ),
+
+      th: ({ children }) => (
+        <th
+          className="px-3 py-2.5 text-left font-semibold whitespace-nowrap"
+          style={{ color: c.text }}
+        >
+          {children}
+        </th>
+      ),
+
+      td: ({ children }) => (
+        <td
+          className="px-3 py-2.5 align-top"
+          style={{ color: c.textMuted }}
+        >
+          {children}
+        </td>
       ),
 
       code: ({ inline, children }) =>
@@ -473,7 +546,7 @@ export default function DoubtSolver() {
         ),
     }}
   >
-    {msg.content}
+    {cleanMarkdown(msg.content)}
   </ReactMarkdown>
 </div>
                       <div className="flex items-center gap-2 mt-2.5 pt-2.5" style={{ borderTop: `1px solid ${c.border}` }}>
