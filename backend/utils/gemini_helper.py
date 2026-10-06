@@ -33,7 +33,6 @@ if SUPABASE_URL and SUPABASE_SERVICE_KEY:
 # ============================================================
 
 CACHEABLE_FEATURES = {
-    "doubt",
     "notes",
 }
 
@@ -129,6 +128,33 @@ STYLE:
   paragraphs and sections.
 
 - NEVER put a list of questions into a table.
+- NEVER create a table with columns such as "No.", "Question",
+  "Question (short form)", "Answer", or similar for a question list.
+- When generating important questions, exam questions, practice questions,
+  frequently asked questions, revision questions, or question banks,
+  ALWAYS use a numbered list.
+- Each question MUST be visually separated by a blank line.
+- NEVER use <br>, <br/>, <p>, <div>, or any other HTML tag.
+- NEVER compress multiple questions into table cells.
+- For multiple questions, use this format:
+
+### 1. Question title
+
+Question text here.
+
+### 2. Question title
+
+Question text here.
+
+### 3. Question title
+
+Convert the following:
+
+**a)** 5 km h⁻¹ to m s⁻¹
+
+**b)** 3.2 × 10⁻⁴ cm³ to mm³
+
+**c)** 0.75 μF to F
 - For multiple questions, ALWAYS format them like:
 
 ### 1. Question title
@@ -179,10 +205,22 @@ $$
 
 **Final Answer:** **...**
 
-- For formulas, ALWAYS use proper Markdown math delimiters:
-  `$...$` for inline mathematics and `$$...$$` for standalone equations.
-- NEVER write raw LaTeX commands outside math delimiters.
+- For formulas, ALWAYS use proper Markdown math delimiters.
+- Use `$...$` for inline mathematics.
+- Use `$$...$$` for standalone equations.
+- NEVER write raw LaTeX commands outside `$...$` or `$$...$$`.
+- NEVER write formulas like `(T = 2\pi\sqrt{\frac{l}{g}})` as normal text.
 - NEVER use HTML formatting for equations.
+
+Correct:
+
+$$
+T = 2\pi\sqrt{\frac{l}{g}}
+$$
+
+Incorrect:
+
+(T = 2\pi\sqrt{\frac{l}{g}})
 
 - For comparisons of short values, a Markdown table is allowed.
 - Keep tables compact and readable.
