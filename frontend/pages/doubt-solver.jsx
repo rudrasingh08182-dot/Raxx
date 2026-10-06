@@ -17,7 +17,7 @@ export default function DoubtSolver() {
   const [messages, setMessages] = useState([]);
   const [question, setQuestion] = useState("");
   const [subject, setSubject] = useState("All Subjects");
-  const [language, setLanguage] = useState("english");
+  const [language, setLanguage] = useState("en");
   const [loading, setLoading] = useState(false);
   const [recentDoubts, setRecentDoubts] = useState([]);
   const [showRecentDrawer, setShowRecentDrawer] = useState(false);
@@ -33,24 +33,68 @@ export default function DoubtSolver() {
   }, [messages]);
 
   const cleanMarkdown = (text) => {
-    if (!text) return "";
+  if (!text) return "";
 
-    let cleaned = text;
+  let cleaned = text;
 
-    // Remove HTML line breaks
-    cleaned = cleaned.replace(/\\?<br\s*\/?>/gi, "\n\n");
+  // -----------------------------------------
+  // HTML cleanup
+  // -----------------------------------------
 
-    // Remove HTML paragraph tags
-    cleaned = cleaned.replace(/<\/?p>/gi, "\n\n");
+  cleaned = cleaned.replace(/<br\s*\/?>/gi, "\n\n");
 
-    // Decode common HTML space
-    cleaned = cleaned.replace(/&nbsp;/gi, " ");
+  cleaned = cleaned.replace(/<\/?p>/gi, "\n\n");
 
-    // Remove excessive blank lines
-    cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+  cleaned = cleaned.replace(/&nbsp;/gi, " ");
 
-    return cleaned.trim();
-  };
+  // -----------------------------------------
+  // Convert LaTeX delimiters
+  // -----------------------------------------
+
+  // \[ ... \]  →  $$ ... $$
+  cleaned = cleaned.replace(
+    /\\\[(.*?)\\\]/gs,
+    (_, formula) => `\n\n$$\n${formula.trim()}\n$$\n\n`
+  );
+
+  // \( ... \)  →  $ ... $
+  cleaned = cleaned.replace(
+    /\\\((.*?)\\\)/gs,
+    (_, formula) => `$${formula.trim()}$`
+  );
+
+  // -----------------------------------------
+  // Protect common raw LaTeX expressions
+  // -----------------------------------------
+  
+  // Example:
+  // (0.75 \mu F)
+  // →
+  // $0.75 \mu F$
+
+  cleaned = cleaned.replace(
+    /\(([^()\n]*\\(?:mu|sqrt|frac|times|pi|alpha|beta|gamma|Delta|Omega|text)\b[^()\n]*)\)/g,
+    (_, formula) => `$${formula.trim()}$`
+  );
+
+  // Example:
+  // [ T = 2\pi\sqrt{l/g} ]
+  // →
+  // $$T = 2\pi\sqrt{l/g}$$
+
+  cleaned = cleaned.replace(
+    /\[\s*([^\[\]\n]*\\(?:sqrt|frac|mu|times|pi|text|Delta|Omega)\b[^\[\]\n]*)\s*\]/g,
+    (_, formula) => `\n\n$$\n${formula.trim()}\n$$\n\n`
+  );
+
+  // -----------------------------------------
+  // Remove excessive blank lines
+  // -----------------------------------------
+
+  cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+
+  return cleaned.trim();
+};
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -254,7 +298,7 @@ export default function DoubtSolver() {
         {/* Language Toggle */}
         <div className="flex rounded-xl p-0.5" style={{ background: c.hover, border: `1px solid ${c.border}` }}>
           <button
-            onClick={() => setLanguage("english")}
+            onClick={() => setLanguage("en")}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold transition"
             style={{
               background: language === "english" ? c.rust : "transparent",
@@ -264,7 +308,7 @@ export default function DoubtSolver() {
             EN
           </button>
           <button
-            onClick={() => setLanguage("hindi")}
+            onClick={() => setLanguage("hi")}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold transition"
             style={{
               background: language === "hindi" ? c.rust : "transparent",
