@@ -6,6 +6,14 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 
+const fileToBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
 const subjects = [
   "All Subjects", "Mathematics", "Physics", "Chemistry",
   "Biology", "History", "Geography", "Economics",
@@ -99,6 +107,12 @@ export default function DoubtSolver() {
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    // base64 hone par size ~33% badh jaati hai, isliye 3MB ki safe limit
+    if (file.size > 3 * 1024 * 1024) {
+      alert("File 3MB se chhoti honi chahiye. Please chhoti image/PDF upload karo.");
+      e.target.value = "";
+      return;
+    }
     setUploadedFile(file);
     if (file.type.startsWith("image/")) {
       setPreviewUrl(URL.createObjectURL(file));
@@ -139,6 +153,7 @@ export default function DoubtSolver() {
   );
 
   const currentQuestion = question;
+  const currentFile = uploadedFile;
   setQuestion("");
   setUploadedFile(null);
   setPreviewUrl(null);
@@ -157,14 +172,22 @@ export default function DoubtSolver() {
   ]);
 
   try {
+    let fileBase64 = null;
+    if (currentFile) {
+      fileBase64 = await fileToBase64(currentFile);
+    }
+
     const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/doubt/ask-stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        question: currentQuestion || "Please solve this from the uploaded image",
+        question: currentQuestion,
         subject: subject !== "All Subjects" ? subject : "",
         language,
         history: recentHistory,
+        file_base64: fileBase64,
+        file_mime: currentFile?.type || null,
+        file_name: currentFile?.name || null,
       }),
     });
 
