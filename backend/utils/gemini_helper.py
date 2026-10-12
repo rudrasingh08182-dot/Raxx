@@ -83,7 +83,7 @@ RAG_FEATURES = {
 # SYSTEM PROMPT
 # ============================================================
 
-RAXX_SYSTEM_PROMPT = """
+RAXX_SYSTEM_PROMPT = r"""
 You are RAXX AI, an educational AI assistant for Indian students.
 
 Your job is to provide accurate, clear, useful and student-friendly
@@ -393,7 +393,7 @@ def _build_rag_context(
     board: Optional[str],
     grade: Optional[str],
     subject: str = "",
-    top_k: int = 6,
+    top_k: int = 3,
 ) -> str:
 
     try:
@@ -411,7 +411,7 @@ def _build_rag_context(
                 level = f"class-{match.group(1)}"
 
         results = search_knowledge(
-            query=question,
+            query=question[:1500],
             category="school",
             level=level,
             subject=subject.lower().strip()
@@ -769,7 +769,7 @@ Use a friendly, conversational tutor style.
             board,
             grade,
             subject,
-            top_k=8 if feature == "syllabus" else 6,
+            top_k=4 if feature == "syllabus" else 3,
         )
 
     # --------------------------------------------------------
@@ -798,19 +798,32 @@ Use a friendly, conversational tutor style.
 
     client = get_groq_client()
 
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=messages,
-        reasoning_effort=reasoning_config[
-            "reasoning_effort"
-        ],
-        
-        max_completion_tokens=reasoning_config[
-            "max_completion_tokens"
-        ],
-        temperature=0.2,
-        frequency_penalty=0.4,
-    )
+    import time
+    response = None
+    for _attempt in range(3):
+        try:
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=messages,
+                reasoning_effort=reasoning_config[
+                    "reasoning_effort"
+                ],
+                
+                max_completion_tokens=reasoning_config[
+                    "max_completion_tokens"
+                ],
+                temperature=0.2,
+                frequency_penalty=0.4,
+            )
+            break
+        except Exception as e:
+            if "429" in str(e) and _attempt < 2:
+                time.sleep(1.5 * (_attempt + 1))
+                continue
+            raise
+
+    if response is None:
+        raise Exception("RAXX AI abhi busy hai, please try again.")
 
     answer = ""
 
@@ -946,7 +959,7 @@ Use a friendly, conversational tutor style.
             board,
             grade,
             subject,
-            top_k=8 if feature == "syllabus" else 6,
+            top_k=4 if feature == "syllabus" else 3,
         )
 
     # --------------------------------------------------------
@@ -975,20 +988,34 @@ Use a friendly, conversational tutor style.
 
     client = get_groq_client()
 
-    stream = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=messages,
-        reasoning_effort=reasoning_config[
-            "reasoning_effort"
-        ],
-       
-        max_completion_tokens=reasoning_config[
-            "max_completion_tokens"
-        ],
-        temperature=0.2,
-        frequency_penalty=0.4,
-        stream=True,
-    )
+    import time
+    stream = None
+    for _attempt in range(3):
+        try:
+            stream = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=messages,
+                reasoning_effort=reasoning_config[
+                    "reasoning_effort"
+                ],
+               
+                max_completion_tokens=reasoning_config[
+                    "max_completion_tokens"
+                ],
+                temperature=0.2,
+                frequency_penalty=0.4,
+                stream=True,
+            )
+            break
+        except Exception as e:
+            if "429" in str(e) and _attempt < 2:
+                time.sleep(1.5 * (_attempt + 1))
+                continue
+            raise
+
+    if stream is None:
+        yield "\n\n⚠️ RAXX AI abhi busy hai. Please 30 second baad try karo."
+        return
 
     # --------------------------------------------------------
     # STREAM RESPONSE
