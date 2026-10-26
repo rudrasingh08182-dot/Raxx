@@ -648,7 +648,7 @@ export default function StudentDashboardMobile() {
       {/* Premium */}
       <button onClick={() => router.push("/payment")} className="w-full rounded-2xl p-4 text-left" style={{ background: "rgba(200,149,108,0.08)", border: `1px solid rgba(200,149,108,0.20)` }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">⭐</span>
+          <span className="text-2xl"></span>
           <div className="flex-1">
             <p className="font-bold text-sm" style={{ color: c.gold }}>Upgrade to Premium</p>
             <p className="text-xs" style={{ color: c.textDim }}>Unlock all AI features</p>

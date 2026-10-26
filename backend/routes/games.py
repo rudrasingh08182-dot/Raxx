@@ -6,14 +6,14 @@ import os
 import json
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 router = APIRouter()
 client = OpenAI(
-    base_url=os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1"),
-    api_key=os.getenv("NVIDIA_API_KEY"),
+    base_url=os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
+    api_key=os.getenv("GROQ_API_KEY") or "missing-api-key",
 )
-MODEL_NAME = "nvidia/nemotron-3.5-lightning-30b-a3b"
+MODEL_NAME = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 supabase = create_client(
     os.getenv("SUPABASE_URL"),
